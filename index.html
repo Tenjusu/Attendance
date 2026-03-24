@@ -355,9 +355,9 @@ const FIREBASE_CONFIG = {
 //    Replace '' values with the actual  strings on your real student IDs.
 //    To find yours: open this app, hold your ID up to the camera, check the browser console.
 const STUDENTS = [
-  { id: 'S1', name: 'Student 1', : 'A804389465C' },
-  { id: 'S2', name: 'Student 2', : 'A804060073C' },
-  { id: 'S3', name: 'Student 3', : 'STU-100003' },
+  { id: 'S1', name: 'Student 1', barcode: 'A804389465C' },
+  { id: 'S2', name: 'Student 2', barcode: 'A804060073C' },
+  { id: 'S3', name: 'Student 3', barcode: 'STU-100003' },
   { id: 'S4', name: 'Student 4', barcode: 'STU-100004' },
   { id: 'S5', name: 'Student 5', barcode: 'STU-100005' },
 ];
@@ -636,9 +636,9 @@ function render() {
         <p class="header-sub">${today}</p>
       </div>
 
-      <div class="section-label">5 registered students</div>
+      <div class="section-label">5 registered </div>
 
-      ${STUDENTS.map((s, i) => `
+      ${.map((s, i) => `
         <div class="student-row">
           <div class="avatar">M${i+1}</div>
           <div class="student-info">
@@ -686,9 +686,9 @@ function render() {
 
       <div class="section-label">Live roster</div>
 
-      ${STUDENTS.map(s => `
+      ${.map(s => `
         <div class="student-row" id="row-${s.id}">
-          <div class="avatar">M${STUDENTS.indexOf(s)+1}</div>
+          <div class="avatar">M${.indexOf(s)+1}</div>
           <div class="student-info">
             <div class="student-name">${s.name}</div>
             <div class="student-barcode">${s.barcode}</div>
@@ -731,7 +731,7 @@ function render() {
 
       <div class="section-label">Final roster</div>
 
-      ${STUDENTS.map(s => {
+      ${.map(s => {
         const present = !!attendance[s.id];
         const time = present ? fmtTime(attendance[s.id].scannedAt) : null;
         return `
