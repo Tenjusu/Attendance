@@ -343,12 +343,12 @@
 // 1) Your Firebase project config
 //    Go to console.firebase.google.com → your project → Project Settings → Web App
 const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyBVFXnOnK9_uCfgLDRrgRfykHVSvcJ0Fe8",
-  authDomain:        "mobiletracking-a53ac.firebaseapp.com",
-  projectId:         "mobiletracking-a53ac",
-  storageBucket:     "mobiletracking-a53ac.firebasestorage.app",
+  apiKey: "AIzaSyBVFXnOnK9_uCfgLDRrgRfykHVSvcJ0Fe8",
+  authDomain: "mobiletracking-a53ac.firebaseapp.com",
+  projectId: "mobiletracking-a53ac",
+  storageBucket: "mobiletracking-a53ac.firebasestorage.app",
   messagingSenderId: "235704110221",
-  appId:             "1:235704110221:web:2b79cc60e34ee315dc66c4",
+  appId: "1:235704110221:web:2b79cc60e34ee315dc66c4"
 };
 
 // 2) Your 5 team members
@@ -363,7 +363,7 @@ const SESSION_SECONDS = 360; // 6 minutes
    ───────────────────────────────────────────────────────────────── */
 
 let db = null;
-const firebaseReady = FIREBASE_CONFIG.apiKey !== 'AIzaSyBVFXnOnK9_uCfgLDRrgRfykHVSvcJ0Fe8';
+const firebaseReady = FIREBASE_CONFIG.apiKey !== 'PASTE_YOUR_API_KEY_HERE';
 
 if (firebaseReady) {
   try {
