@@ -354,27 +354,22 @@ const FIREBASE_CONFIG = {
 // 2) Your 5 team members
 //    Replace 'barcode' values with the actual barcode strings on your real student IDs.
 //    To find yours: open this app, hold your ID up to the camera, check the browser console.
-const STUDENTS = [
-  { id: 'S1', name: 'Student 1', barcode: 'A804389465C' },
-  { id: 'S2', name: 'Student 2', barcode: 'A804060073C' },
-  { id: 'S3', name: 'Student 3', barcode: 'STU-100003' },
-  { id: 'S4', name: 'Student 4', barcode: 'STU-100004' },
-  { id: 'S5', name: 'Student 5', barcode: 'STU-100005' },
-];
+let STUDENTS = [];
 
 const SESSION_SECONDS = 360; // 6 minutes
 
 /* ─────────────────────────────────────────────────────────────────
-   Firebase init — gracefully skipped if config not yet filled in
+   Firebase init & Data Fetch
    ───────────────────────────────────────────────────────────────── */
 
 let db = null;
-const firebaseReady = FIREBASE_CONFIG.apiKey !== 'PASTE_YOUR_API_KEY_HERE';
+const firebaseReady = FIREBASE_CONFIG.apiKey !== 'AIzaSyBVFXnOnK9_uCfgLDRrgRfykHVSvcJ0Fe8';
 
 if (firebaseReady) {
   try {
     firebase.initializeApp(FIREBASE_CONFIG);
     db = firebase.firestore();
+    fetchStudents(); // Pulls the roster immediately
   } catch(e) {
     console.warn('[Firebase] Init failed:', e.message);
   }
