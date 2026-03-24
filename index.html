@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Attendance</title>
+
+  <!-- Firebase compat SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-app-compat.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-firestore-compat.min.js"></script>
+
+  <!-- Quagga2 — 1D barcode scanner -->
+  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #ffffff;
+      --bg2:      #f7f7f6;
+      --bg3:      #f0efed;
+      --border:   rgba(0,0,0,0.10);
+      --border2:  rgba(0,0,0,0.18);
+      --text:     #111110;
+      --text2:    #6b6b68;
+      --text3:    #9d9c99;
+      --green:    #18794e;
+      --green-bg: #effaf4;
+      --green-br: rgba(24,121,78,0.22);
+      --red:      #cd2b31;
+      --red-bg:   #fff0f0;
+      --blue:     #185fa5;
+      --blue-bg:  #e8f2fc;
+      --r-md:     8px;
+      --r-lg:     14px;
+      --scan-h:   140px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:       #1a1a18;
+        --bg2:      #222220;
+        --bg3:      #2a2a28;
+        --border:   rgba(255,255,255,0.09);
+        --border2:  rgba(255,255,255,0.16);
+        --text:     #f0efeb;
+        --text2:    #9d9c98;
+        --text3:    #6b6b68;
+        --green:    #4cc38a;
+        --green-bg: #0d2b1d;
+        --green-br: rgba(76,195,138,0.22);
+        --red:      #f2555a;
+        --red-bg:   #2e1213;
+        --blue:     #6badea;
+        --blue-bg:  #0c2340;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      background: var(--bg3);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 1rem 0.75rem 3rem;
+    }
+
+    #app {
+      width: 100%;
+      max-width: 390px;
+      background: var(--bg);
+      border-radius: var(--r-lg);
+      border: 0.5px solid var(--border);
+      overflow: hidden;
+    }
+
+    /* ── Shared components ────────────────────────────────── */
+
+    .header {
+      padding: 1.1rem 1.1rem 0.9rem;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .header-label {
+      font-size: 10px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 3px;
+    }
+    .header-title {
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .header-sub {
+      font-size: 13px;
+      color: var(--text2);
+      margin-top: 2px;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 0.7rem 1rem;
+      font-size: 14px;
+      font-weight: 500;
+      text-align: center;
+      border: 0.5px solid var(--border2);
+      border-radius: var(--r-md);
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.12s;
+    }
+    .btn:active { background: var(--bg2); }
+    .btn.primary {
+      background: var(--text);
+      color: var(--bg);
+      border-color: transparent;
+    }
+    .btn.primary:active { opacity: 0.85; }
+    .btn.ghost {
+      border-color: var(--border);
+      color: var(--text2);
+      font-size: 13px;
+    }
+
+    .student-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 1rem;
+      border-bottom: 0.5px solid var(--border);
+      transition: background 0.15s;
+    }
+    .student-row:last-child { border-bottom: none; }
+    .student-row.present { background: var(--green-bg); }
+
+    .avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--blue-bg);
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 500;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .avatar.present { background: var(--green-bg); color: var(--green); }
+
+    .student-info { flex: 1; margin: 0 10px; }
+    .student-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .student-name.present { color: var(--green); }
+    .student-barcode { font-size: 11px; color: var(--text3); font-family: 'SF Mono', 'Menlo', monospace; margin-top: 1px; }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--border2);
+      flex-shrink: 0;
+    }
+    .status-dot.present { background: var(--green); }
+
+    .section-label {
+      font-size: 10px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text3);
+      padding: 0.6rem 1rem 0.35rem;
+      border-bottom: 0.5px solid var(--border);
+      background: var(--bg2);
+    }
+
+    /* ── Ready screen ─────────────────────────────────────── */
+
+    #screen-ready .footer { padding: 1rem; }
+
+    /* ── Scan screen ──────────────────────────────────────── */
+
+    .scan-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 1rem;
+      border-bottom: 0.5px solid var(--border);
+    }
+
+    .live-badge {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 500; color: var(--green);
+    }
+    .live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+    .timer-display {
+      font-size: 22px;
+      font-weight: 500;
+      font-family: 'SF Mono', 'Menlo', monospace;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .timer-display.urgent { color: var(--red); }
+
+    .count-badge {
+      font-size: 12px;
+      color: var(--text2);
+      background: var(--bg2);
+      border: 0.5px solid var(--border);
+      border-radius: 20px;
+      padding: 2px 9px;
+    }
+
+    /* Camera viewport */
+    #camera-wrap {
+      position: relative;
+      height: var(--scan-h);
+      background: #0a0a0a;
+      overflow: hidden;
+    }
+    #camera-wrap video,
+    #camera-wrap canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+    #camera-wrap canvas { display: none; } /* Quagga's debug canvas — hidden */
+
+    .reticle {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 240px; height: 68px;
+      pointer-events: none;
+    }
+    .reticle::before, .reticle::after,
+    .reticle-inner::before, .reticle-inner::after {
+      content: '';
+      position: absolute;
+      width: 18px; height: 18px;
+      border-color: #22d3ee;
+      border-style: solid;
+    }
+    .reticle::before  { top:0; left:0;  border-width: 1.5px 0 0 1.5px; }
+    .reticle::after   { top:0; right:0; border-width: 1.5px 1.5px 0 0; }
+    .reticle-inner::before { bottom:0; left:0;  border-width: 0 0 1.5px 1.5px; }
+    .reticle-inner::after  { bottom:0; right:0; border-width: 0 1.5px 1.5px 0; }
+
+    .scanline {
+      position: absolute;
+      left: 8px; right: 8px;
+      height: 1.5px;
+      background: #22d3ee;
+      animation: scanline 2.2s linear infinite;
+    }
+    @keyframes scanline { 0%{top:6px} 100%{top:calc(100% - 6px)} }
+
+    .camera-hint {
+      position: absolute;
+      bottom: 8px; left: 0; right: 0;
+      text-align: center;
+      font-size: 10px;
+      color: rgba(255,255,255,0.4);
+    }
+
+    .scan-toast {
+      padding: 0.55rem 1rem;
+      background: var(--green-bg);
+      border-bottom: 0.5px solid var(--green-br);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--green);
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.3s;
+    }
+    .scan-toast.empty { background: var(--bg2); color: var(--text3); font-weight: 400; }
+
+    /* ── Summary screen ───────────────────────────────────── */
+
+    .summary-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      padding: 1rem;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .stat-card {
+      background: var(--bg2);
+      border-radius: var(--r-md);
+      padding: 0.7rem 0.8rem;
+    }
+    .stat-label { font-size: 11px; color: var(--text3); margin-bottom: 3px; }
+    .stat-value { font-size: 24px; font-weight: 500; color: var(--text); }
+    .stat-value.green { color: var(--green); }
+    .stat-value.red   { color: var(--red); }
+
+    .summary-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 1rem;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .summary-row:last-child { border-bottom: none; }
+    .check-icon { font-size: 13px; color: var(--green); margin-right: 4px; }
+    .x-icon    { font-size: 13px; color: var(--red);   margin-right: 4px; }
+
+    .firebase-note {
+      margin: 1rem;
+      padding: 0.7rem 0.8rem;
+      background: var(--bg2);
+      border-radius: var(--r-md);
+      border: 0.5px solid var(--border);
+      font-size: 11px;
+      color: var(--text2);
+      line-height: 1.6;
+    }
+    .firebase-note a { color: var(--blue); text-decoration: none; }
+
+    .footer-buttons { padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+
+    /* ── Error / permission ───────────────────────────────── */
+    .cam-error {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: var(--scan-h); background: #0a0a0a; gap: 6px;
+    }
+    .cam-error p { font-size: 12px; color: rgba(255,255,255,0.45); text-align: center; padding: 0 1.5rem; }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────────
+   🔧 CONFIGURATION — edit these two sections before deploying
+   ───────────────────────────────────────────────────────────────── */
+
+// 1) Your Firebase project config
+//    Go to console.firebase.google.com → your project → Project Settings → Web App
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBVFXnOnK9_uCfgLDRrgRfykHVSvcJ0Fe8",
+  authDomain:        "mobiletracking-a53ac.firebaseapp.com",
+  projectId:         "mobiletracking-a53ac",
+  storageBucket:     "mobiletracking-a53ac.firebasestorage.app",
+  messagingSenderId: "235704110221",
+  appId:             "1:235704110221:web:2b79cc60e34ee315dc66c4",
+};
+
+// 2) Your 5 team members
+//    Replace 'barcode' values with the actual barcode strings on your real student IDs.
+//    To find yours: open this app, hold your ID up to the camera, check the browser console.
+const STUDENTS = [
+  { id: 'S1', name: 'Student 1', barcode: 'A804389465C' },
+  { id: 'S2', name: 'Student 2', barcode: 'A804060073C' },
+  { id: 'S3', name: 'Student 3', barcode: 'STU-100003' },
+  { id: 'S4', name: 'Student 4', barcode: 'STU-100004' },
+  { id: 'S5', name: 'Student 5', barcode: 'STU-100005' },
+];
+
+const SESSION_SECONDS = 360; // 6 minutes
+
+/* ─────────────────────────────────────────────────────────────────
+   Firebase init — gracefully skipped if config not yet filled in
+   ───────────────────────────────────────────────────────────────── */
+
+let db = null;
+const firebaseReady = FIREBASE_CONFIG.apiKey !== 'PASTE_YOUR_API_KEY_HERE';
+
+if (firebaseReady) {
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+  } catch(e) {
+    console.warn('[Firebase] Init failed:', e.message);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   App state
+   ───────────────────────────────────────────────────────────────── */
+
+let phase       = 'ready';   // 'ready' | 'scanning' | 'summary'
+let remaining   = SESSION_SECONDS;
+let attendance  = {};        // { studentId: { name, scannedAt } }
+let timerID     = null;
+let sessionDocID = null;
+let lastToastMsg = null;
+let lastToastTO  = null;
+let cameraRunning = false;
+
+/* ─────────────────────────────────────────────────────────────────
+   Session actions
+   ───────────────────────────────────────────────────────────────── */
+
+async function startSession() {
+  attendance  = {};
+  remaining   = SESSION_SECONDS;
+  lastToastMsg = null;
+  sessionDocID = null;
+  phase       = 'scanning';
+
+  // Create Firestore session document
+  if (db) {
+    try {
+      const ref = await db.collection('sessions').add({
+        date:      new Date().toLocaleDateString('en-CA'),
+        startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        endedAt:   null,
+        attendance: {},
+      });
+      sessionDocID = ref.id;
+    } catch(e) { console.warn('[Firebase] session create failed:', e.message); }
+  }
+
+  render();
+
+  // Start countdown
+  clearInterval(timerID);
+  timerID = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(timerID);
+      endSession();
+    } else {
+      updateTimer();
+    }
+  }, 1000);
+
+  // Start camera after render
+  requestAnimationFrame(() => startCamera());
+}
+
+async function recordScan(barcodeValue) {
+  // Match barcode against student list
+  const student = STUDENTS.find(s =>
+    s.barcode.trim().toLowerCase() === barcodeValue.trim().toLowerCase()
+  );
+
+  if (!student) {
+    console.log('[Scan] Unknown barcode:', barcodeValue);
+    showToast(`Unknown ID: ${barcodeValue}`, 'warn');
+    return;
+  }
+  if (attendance[student.id]) {
+    // Already scanned — silently ignore
+    return;
+  }
+
+  const scannedAt = new Date();
+  attendance[student.id] = { name: student.name, scannedAt };
+  showToast(`${student.name} marked present`, 'ok');
+  updateRoster();
+
+  // Write to Firestore
+  if (db && sessionDocID) {
+    try {
+      await db.collection('sessions').doc(sessionDocID).update({
+        [`attendance.${student.id}`]: {
+          name:      student.name,
+          scannedAt: firebase.firestore.Timestamp.fromDate(scannedAt),
+        }
+      });
+    } catch(e) { console.warn('[Firebase] attendance write failed:', e.message); }
+  }
+}
+
+async function endSession() {
+  stopCamera();
+  phase = 'summary';
+
+  if (db && sessionDocID) {
+    try {
+      await db.collection('sessions').doc(sessionDocID).update({
+        endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch(e) { console.warn('[Firebase] session close failed:', e.message); }
+  }
+
+  render();
+}
+
+function resetApp() {
+  phase = 'ready';
+  remaining = SESSION_SECONDS;
+  attendance = {};
+  lastToastMsg = null;
+  sessionDocID = null;
+  render();
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Camera / Quagga2
+   ───────────────────────────────────────────────────────────────── */
+
+function startCamera() {
+  if (cameraRunning) return;
+  const wrap = document.getElementById('camera-wrap');
+  if (!wrap) return;
+
+  Quagga.init({
+    inputStream: {
+      type: 'LiveStream',
+      target: wrap,
+      constraints: {
+        facingMode: 'environment', // rear camera on phones
+        width:  { ideal: 640 },
+        height: { ideal: 320 },
+      },
+    },
+    decoder: {
+      // ⚠️ 1D formats ONLY — QR_Code and DataMatrix are intentionally excluded
+      readers: [
+        'code_128_reader',
+        'code_39_reader',
+        'code_93_reader',
+        'ean_reader',
+        'ean_8_reader',
+        'upc_reader',
+        'upc_e_reader',
+        'codabar_reader',
+        'i2of5_reader',
+      ],
+      debug: { showCanvas: false, drawBoundingBox: false, showFrequency: false },
+    },
+    locate: true,
+    frequency: 8, // scans per second — 8 is responsive without hammering CPU
+  }, (err) => {
+    if (err) {
+      console.error('[Quagga] init error:', err);
+      const wrap = document.getElementById('camera-wrap');
+      if (wrap) wrap.innerHTML = `
+        <div class="cam-error">
+          <p>Camera access denied or unavailable.</p>
+          <p>Open this page in Safari and allow camera permissions.</p>
+        </div>`;
+      return;
+    }
+    Quagga.start();
+    cameraRunning = true;
+  });
+
+  // Deduplicate: only fire once per 1.5s for the same barcode
+  let lastVal = null, lastTime = 0;
+  Quagga.onDetected((result) => {
+    const val = result.codeResult.code;
+    const now = Date.now();
+    if (val === lastVal && now - lastTime < 1500) return;
+    lastVal  = val;
+    lastTime = now;
+    console.log('[Scan] Detected:', val, result.codeResult.format);
+    recordScan(val);
+  });
+}
+
+function stopCamera() {
+  if (!cameraRunning) return;
+  try { Quagga.stop(); } catch(e) {}
+  cameraRunning = false;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Render helpers (partial updates — no full re-render during scanning)
+   ───────────────────────────────────────────────────────────────── */
+
+function fmt(s) {
+  return String(Math.floor(s / 60)).padStart(2,'0') + ':' + String(s % 60).padStart(2,'0');
+}
+
+function fmtTime(date) {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function presentCount() {
+  return Object.keys(attendance).length;
+}
+
+function updateTimer() {
+  const el = document.getElementById('timer');
+  if (!el) return;
+  el.textContent = fmt(remaining);
+  el.className = 'timer-display' + (remaining <= 60 ? ' urgent' : '');
+}
+
+function updateRoster() {
+  STUDENTS.forEach(s => {
+    const row = document.getElementById('row-' + s.id);
+    if (!row) return;
+    const present = !!attendance[s.id];
+    const time = present ? fmtTime(attendance[s.id].scannedAt) : '—';
+
+    row.className = 'student-row' + (present ? ' present' : '');
+    row.querySelector('.avatar').className = 'avatar' + (present ? ' present' : '');
+    row.querySelector('.student-name').className = 'student-name' + (present ? ' present' : '');
+    row.querySelector('.status-dot').className = 'status-dot' + (present ? ' present' : '');
+    row.querySelector('.scan-time').textContent = time;
+  });
+
+  const cntEl = document.getElementById('scan-count');
+  if (cntEl) cntEl.textContent = presentCount() + ' / 5';
+}
+
+function showToast(msg, type = 'ok') {
+  const el = document.getElementById('scan-toast');
+  if (!el) return;
+  lastToastMsg = msg;
+  el.className = 'scan-toast' + (type === 'ok' ? '' : ' empty');
+  el.innerHTML = type === 'ok'
+    ? `<span style="color:var(--green)">✓</span> ${msg}`
+    : `<span>${msg}</span>`;
+  clearTimeout(lastToastTO);
+  lastToastTO = setTimeout(() => {
+    const el2 = document.getElementById('scan-toast');
+    if (el2) { el2.className = 'scan-toast empty'; el2.textContent = 'Waiting for barcode...'; }
+  }, 2500);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Full render — only called on phase transitions
+   ───────────────────────────────────────────────────────────────── */
+
+function render() {
+  const app = document.getElementById('app');
+  const today = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+
+  /* ── READY ────────────────────────────────────────── */
+  if (phase === 'ready') {
+    app.innerHTML = `
+      <div class="header">
+        <p class="header-label">Attendance Tracker</p>
+        <p class="header-title">Start a session</p>
+        <p class="header-sub">${today}</p>
+      </div>
+
+      <div class="section-label">5 registered students</div>
+
+      ${STUDENTS.map((s, i) => `
+        <div class="student-row">
+          <div class="avatar">M${i+1}</div>
+          <div class="student-info">
+            <div class="student-name">${s.name}</div>
+            <div class="student-barcode">${s.barcode}</div>
+          </div>
+        </div>
+      `).join('')}
+
+      ${!firebaseReady ? `
+        <div class="firebase-note">
+          ⚠️ Firebase not configured yet — attendance saves locally only.
+          Add your config at the top of this file.
+        </div>
+      ` : `
+        <div class="firebase-note">
+          Firebase connected. Sessions save to <strong>${FIREBASE_CONFIG.projectId}</strong>.
+        </div>
+      `}
+
+      <div id="screen-ready" class="footer-buttons">
+        <button class="btn primary" onclick="startSession()">Begin 6-minute session</button>
+      </div>
+    `;
+  }
+
+  /* ── SCANNING ─────────────────────────────────────── */
+  else if (phase === 'scanning') {
+    app.innerHTML = `
+      <div class="scan-bar">
+        <div class="live-badge">
+          <div class="live-dot"></div>
+          Live
+        </div>
+        <span id="timer" class="timer-display">${fmt(remaining)}</span>
+        <span id="scan-count" class="count-badge">${presentCount()} / 5</span>
+      </div>
+
+      <div id="camera-wrap">
+        <div class="reticle"><div class="reticle-inner"></div><div class="scanline"></div></div>
+        <div class="camera-hint">Hold barcode steady in frame</div>
+      </div>
+
+      <div id="scan-toast" class="scan-toast empty">Waiting for barcode...</div>
+
+      <div class="section-label">Live roster</div>
+
+      ${STUDENTS.map(s => `
+        <div class="student-row" id="row-${s.id}">
+          <div class="avatar">M${STUDENTS.indexOf(s)+1}</div>
+          <div class="student-info">
+            <div class="student-name">${s.name}</div>
+            <div class="student-barcode">${s.barcode}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="scan-time" style="font-size:11px;color:var(--text3);font-family:monospace;">—</span>
+            <div class="status-dot"></div>
+          </div>
+        </div>
+      `).join('')}
+
+      <div class="footer-buttons">
+        <button class="btn ghost" onclick="endSession()">End session early</button>
+      </div>
+    `;
+  }
+
+  /* ── SUMMARY ──────────────────────────────────────── */
+  else if (phase === 'summary') {
+    const pc = presentCount();
+    const absent = 5 - pc;
+
+    app.innerHTML = `
+      <div class="header">
+        <p class="header-label">Session complete</p>
+        <p class="header-title">Attendance summary</p>
+        <p class="header-sub">${today}</p>
+      </div>
+
+      <div class="summary-stats">
+        <div class="stat-card">
+          <div class="stat-label">Present</div>
+          <div class="stat-value green">${pc}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Absent</div>
+          <div class="stat-value red">${absent}</div>
+        </div>
+      </div>
+
+      <div class="section-label">Final roster</div>
+
+      ${STUDENTS.map(s => {
+        const present = !!attendance[s.id];
+        const time = present ? fmtTime(attendance[s.id].scannedAt) : null;
+        return `
+        <div class="summary-row" style="background:${present ? 'var(--green-bg)' : 'var(--bg)'}">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="${present ? 'check-icon' : 'x-icon'}">${present ? '✓' : '✕'}</span>
+            <span style="font-size:13px;font-weight:500;color:${present ? 'var(--green)' : 'var(--text2)'};">${s.name}</span>
+          </div>
+          <span style="font-size:11px;font-family:monospace;color:${present ? 'var(--green)' : 'var(--text3)'};">
+            ${present ? time : 'absent'}
+          </span>
+        </div>`;
+      }).join('')}
+
+      <div class="firebase-note">
+        ${firebaseReady && sessionDocID
+          ? `Saved to Firebase · Session ID: <code style="font-size:10px;">${sessionDocID}</code>`
+          : `Configure Firebase at the top of the file to save sessions automatically.`
+        }
+      </div>
+
+      <div class="footer-buttons">
+        <button class="btn primary" onclick="resetApp()">New session</button>
+      </div>
+    `;
+  }
+}
+
+render();
+</script>
+</body>
+</html>
