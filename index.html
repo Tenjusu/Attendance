@@ -354,6 +354,7 @@ const FIREBASE_CONFIG = {
 // 2) Your 5 team members
 //    Replace 'barcode' values with the actual barcode strings on your real student IDs.
 //    To find yours: open this app, hold your ID up to the camera, check the browser console.
+// 2) Your live team members (Fetched from Firebase)
 let STUDENTS = [];
 
 const SESSION_SECONDS = 360; // 6 minutes
@@ -372,6 +373,25 @@ if (firebaseReady) {
     fetchStudents(); // Pulls the roster immediately
   } catch(e) {
     console.warn('[Firebase] Init failed:', e.message);
+  }
+}
+
+// Fetches live roster from your 'Students' collection
+async function fetchStudents() {
+  if (!db) return;
+  try {
+    const snapshot = await db.collection('Students').get();
+    STUDENTS = [];
+    snapshot.forEach(doc => {
+      STUDENTS.push({
+        id: doc.id,             // Uses barcode as internal ID
+        name: doc.data().name,  // The name you typed in Firebase
+        barcode: doc.id         // The Document ID
+      });
+    });
+    render(); // Refreshes the screen with the live data
+  } catch(e) {
+    console.warn('[Firebase] Failed to fetch students:', e.message);
   }
 }
 
