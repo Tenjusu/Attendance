@@ -15,41 +15,41 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    :root {
-      --bg:       #cc0000;
-      --bg2:      #aa0000;
-      --bg3:      #ffffff;
+  :root {
+      --bg:       #ffffff;      
+      --bg2:      #f8f9fa;       
+      --bg3:      #e9ecef;       
       --border:   rgba(0,0,0,0.10);
       --border2:  rgba(0,0,0,0.18);
-      --text:     #111110;
-      --text2:    #6b6b68;
-      --text3:    #9d9c99;
+      --text:     #000000;       
+      --text2:    #495057;
+      --text3:    #868e96;
       --green:    #18794e;
       --green-bg: #effaf4;
       --green-br: rgba(24,121,78,0.22);
-      --red:      #cd2b31;
+      --red:      #ce1126;       
       --red-bg:   #fff0f0;
       --blue:     #185fa5;
       --blue-bg:  #e8f2fc;
       --r-md:     8px;
       --r-lg:     14px;
-      --scan-h:   140px;
+      --scan-h:   250px;         
     }
 
-    @media (prefers-color-scheme: dark) {
+   @media (prefers-color-scheme: dark) {
       :root {
-        --bg:       #cc0000;
-        --bg2:      #aa0000;
-        --bg3:      #000000;
+        --bg:       #121212;       
+        --bg2:      #1e1e1e;
+        --bg3:      #000000;       
         --border:   rgba(255,255,255,0.09);
         --border2:  rgba(255,255,255,0.16);
-        --text:     #f0efeb;
-        --text2:    #9d9c98;
-        --text3:    #6b6b68;
+        --text:     #ffffff;
+        --text2:    #d4d4d8;
+        --text3:    #9ca3af;
         --green:    #4cc38a;
         --green-bg: #0d2b1d;
         --green-br: rgba(76,195,138,0.22);
-        --red:      #f2555a;
+        --red:      #ce1126;      
         --red-bg:   #2e1213;
         --blue:     #6badea;
         --blue-bg:  #0c2340;
@@ -115,9 +115,9 @@
       transition: background 0.12s;
     }
     .btn:active { background: var(--bg2); }
-    .btn.primary {
-      background: var(--text);
-      color: var(--bg);
+   .btn.primary {
+      background: var(--red); 
+      color: #ffffff;
       border-color: transparent;
     }
     .btn.primary:active { opacity: 0.85; }
@@ -647,11 +647,11 @@ function render() {
     app.innerHTML = `
       <div class="header">
         <p class="header-label">Attendance Tracker</p>
-        <p class="header-title">Start a session</p>
+        <p class="header-title">IT391</p>
         <p class="header-sub">${today}</p>
       </div>
 
-      <div class="section-label">5 registered students</div>
+      <div class="section-label">Registered students</div>
 
       ${STUDENTS.map((s, i) => `
         <div class="student-row">
