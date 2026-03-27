@@ -278,7 +278,7 @@
 <main id="app"></main>
 
 <script>
-window.addEventListener('load', function() {
+
 /* ─── CONFIG ──────────────────────────────────────────── */
 
 const FIREBASE_CONFIG = {
@@ -817,7 +817,7 @@ function initBird() {
   birdInterval = setInterval(() => { f=(f+1)%frames.length; draw(); }, 150);
 }
 
-}); // end window.onload
+ 
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/Attendance/sw.js'));
