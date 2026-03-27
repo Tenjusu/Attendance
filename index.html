@@ -438,13 +438,15 @@ function resetApp() {
 }
 
 /* ─── History ─────────────────────────────────────────── */
-
 async function showHistory() {
   phase = 'history'; historyData = []; render();
   try {
-    const snap = await db.collection('sessions').orderBy('startedAt', 'desc').limit(20).get();
+    // Only grab the 10 most recent sessions
+    const snap = await db.collection('sessions').orderBy('startedAt', 'desc').limit(10).get();
     historyData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch(e) { console.warn('[Firebase] history load failed:', e.message); }
+  } catch(e) { 
+    console.warn('[Firebase] history load failed:', e.message); 
+  }
   render();
 }
 
