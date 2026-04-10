@@ -100,7 +100,7 @@
     .btn.primary { background: var(--red); color: #ffffff; border-color: transparent; }
     .btn.primary:active { opacity: 0.85; }
     .btn.ghost  { border-color: var(--border); color: var(--text2); font-size: 13px; }
-    .btn.danger { border-color: var(--amber-br); color: var(--amber); font-size: 13px; }
+   .btn.danger { border-color: var(--amber-br); color: var(--amber); font-size: 13px; }
     .btn.sm     { padding: 0.4rem 0.8rem; font-size: 12px; width: auto; }
 
     /* ── Login ────────────────────────────────────────── */
@@ -305,8 +305,6 @@ const db = firebase.firestore();
 
 /* ─── State ───────────────────────────────────────────── */
 
-let CLASSES       = [];
-let currentClass  = null;
 let STUDENTS      = [];
 let phase         = 'login';
 let currentUser   = null;
@@ -335,8 +333,8 @@ async function login() {
 
   if (email === PROFESSOR_EMAIL && pass === PROFESSOR_PASSWORD) {
     currentUser = { email };
-    phase = 'classes';
-    fetchClasses();
+    phase = 'ready';
+    fetchStudents();
   } else {
     errEl.textContent = 'Incorrect email or password.';
     errEl.classList.add('show');
@@ -350,64 +348,16 @@ function logout() {
   clearInterval(timerID);
   clearInterval(birdInterval);
   currentUser = null;
-  currentClass = null;
   phase = 'login';
   render();
   setTimeout(initBird, 0);
 }
 
-/* ─── Class Management ────────────────────────────────── */
-
-async function fetchClasses() {
-  try {
-    const snap = await db.collection('classes').where('professor', '==', currentUser.email).get();
-    CLASSES = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    render();
-    setTimeout(initBird, 0);
-  } catch(e) { console.warn('[Firebase] Failed to fetch classes:', e.message); }
-}
-
-function showAddClass() {
-  phase = 'add_class';
-  render();
-}
-
-async function submitNewClass() {
-  const btn = document.getElementById('add-class-btn');
-  btn.innerHTML = '<span class="spinner"></span>';
-  btn.disabled = true;
-
-  const newClass = {
-    name: document.getElementById('c-name').value.trim(),
-    section: document.getElementById('c-section').value.trim(),
-    time: document.getElementById('c-time').value.trim(),
-    location: document.getElementById('c-loc').value.trim(),
-    enrolled: document.getElementById('c-enrolled').value.trim(),
-    professor: currentUser.email,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  };
-
-  if (!newClass.name) { btn.innerHTML = 'Save Class'; btn.disabled = false; return; }
-
-  try {
-    await db.collection('classes').add(newClass);
-    phase = 'classes';
-    fetchClasses();
-  } catch(e) { console.warn('[Firebase] Add class failed:', e.message); }
-}
-
-function selectClass(classId) {
-  currentClass = CLASSES.find(c => c.id === classId);
-  phase = 'ready';
-  fetchStudents();
-}
-
 /* ─── Student fetch ───────────────────────────────────── */
 
 async function fetchStudents() {
-  if (!currentClass) return;
   try {
-    const snapshot = await db.collection('classes').doc(currentClass.id).collection('students').get();
+    const snapshot = await db.collection('Students').get();
     STUDENTS = [];
     snapshot.forEach(doc => {
       STUDENTS.push({ id: doc.id, name: doc.data().name, barcode: doc.id });
@@ -434,7 +384,6 @@ async function startSession() {
       endedAt:    null,
       attendance: {},
       professor:  currentUser ? currentUser.email : 'unknown',
-      className:  currentClass ? currentClass.name : 'Unknown'
     });
     sessionDocID = ref.id;
   } catch(e) { console.warn('[Firebase] session create failed:', e.message); }
@@ -626,103 +575,6 @@ function render() {
     return;
   }
 
-  /* CLASSES DASHBOARD */
-  if (phase === 'classes') {
-    app.innerHTML = `
-      <div class="header">
-        <div class="header-row">
-          <div>
-            <p class="header-label">FlyBy</p>
-            <p class="header-title">Select your class</p>
-            <p class="header-sub">${currentUser.email}</p>
-          </div>
-          <canvas id="redbird" width="64" height="64" style="image-rendering:pixelated;width:64px;height:64px;"></canvas>
-        </div>
-      </div>
-
-      <div style="padding-bottom: 0.5rem;">
-        ${CLASSES.length === 0 
-          ? '<div class="empty-state">No classes found. Add one below.</div>' 
-          : CLASSES.map(c => `
-            <div style="background:var(--bg); border:0.5px solid var(--border2); border-radius:var(--r-md); padding:1.25rem; margin: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-              
-              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-                <div>
-                  <div style="font-size:20px; font-weight:600; color:var(--text); letter-spacing:-0.01em;">${c.name}</div>
-                  <div style="font-size:13px; color:var(--text2); margin-top:2px;">${c.section}</div>
-                </div>
-                <div style="font-size:11px; font-weight:500; color:var(--text2); background:var(--bg2); padding:4px 8px; border-radius:20px; border:0.5px solid var(--border);">
-                  👥 ${c.enrolled || '0'} Students
-                </div>
-              </div>
-
-              <div style="font-size:13px; color:var(--text2); display:flex; flex-direction:column; gap:6px; margin-bottom: 16px;">
-                <div style="display:flex; align-items:center; gap:8px;">🕒 <span style="font-weight:500;">${c.time}</span></div>
-                <div style="display:flex; align-items:center; gap:8px;">📍 <span style="font-weight:500;">${c.location}</span></div>
-              </div>
-
-              <button class="btn primary" style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem;" onclick="selectClass('${c.id}')">
-                <span style="font-weight:600;">Take Attendance</span>
-                <span style="font-size:16px;">›</span>
-              </button>
-            </div>
-          `).join('')}
-      </div>
-
-      <div style="text-align:center; padding: 0 1rem 1rem;">
-         <a href="#" style="font-size:11px; color:var(--text3); text-decoration:underline;">Don't see your class? Contact IT Support</a>
-      </div>
-
-      <div class="footer-buttons" style="padding-top:0; border-top: 0.5px solid var(--border);">
-        <button class="btn ghost" onclick="showAddClass()">+ Add a new class</button>
-        <button class="btn danger" onclick="logout()">Sign out</button>
-      </div>`;
-    setTimeout(initBird, 0);
-    return;
-  }
-
-  /* ADD CLASS FORM */
-  if (phase === 'add_class') {
-    app.innerHTML = `
-      <div class="header">
-        <div class="header-row">
-          <div>
-            <p class="header-label">Setup</p>
-            <p class="header-title">Add New Class</p>
-          </div>
-          <button class="btn sm ghost" onclick="phase='classes';render();">Cancel</button>
-        </div>
-      </div>
-      
-      <div class="login-wrap" style="padding-top:1rem;">
-        <div class="input-group">
-          <div class="input-label">Course Name</div>
-          <input id="c-name" class="input-field" type="text" placeholder="e.g., IT 391">
-        </div>
-        <div class="input-group">
-          <div class="input-label">Section</div>
-          <input id="c-section" class="input-field" type="text" placeholder="e.g., Sec 01">
-        </div>
-        <div class="input-group">
-          <div class="input-label">Class Time</div>
-          <input id="c-time" class="input-field" type="text" placeholder="e.g., Tue/Thu 2:00 PM">
-        </div>
-        <div class="input-group">
-          <div class="input-label">Location</div>
-          <input id="c-loc" class="input-field" type="text" placeholder="e.g., Stevenson 101">
-        </div>
-        <div class="input-group">
-          <div class="input-label">Enrolled Students</div>
-          <input id="c-enrolled" class="input-field" type="number" placeholder="e.g., 30">
-        </div>
-        
-        <div style="margin-top:1rem;">
-          <button id="add-class-btn" class="btn primary" onclick="submitNewClass()">Save Class</button>
-        </div>
-      </div>`;
-    return;
-  }
-
   /* READY */
   if (phase === 'ready') {
     app.innerHTML = `
@@ -730,10 +582,10 @@ function render() {
         <div class="header-row">
           <div>
             <p class="header-label">Attendance Tracker</p>
-            <p class="header-title">${currentClass ? currentClass.name : 'Class'}</p>
+            <p class="header-title">IT391</p>
             <p class="header-sub">${today}</p>
           </div>
-          <button class="btn sm ghost" onclick="phase='classes';fetchClasses();">Back</button>
+          <canvas id="redbird" width="64" height="64" style="image-rendering:pixelated;width:64px;height:64px;"></canvas>
         </div>
       </div>
 
@@ -760,7 +612,9 @@ function render() {
       <div class="footer-buttons">
         <button class="btn primary" onclick="startSession()">Begin 6-minute session</button>
         <button class="btn ghost"   onclick="showHistory()">View attendance history</button>
+        <button class="btn danger"  onclick="logout()">Sign out</button>
       </div>`;
+    setTimeout(initBird, 0);
     return;
   }
 
@@ -881,7 +735,7 @@ function render() {
             const startTime = session.startedAt ? fmtTime(session.startedAt) : '';
             return `
             <div class="history-session">
-              <div class="history-date">${session.date || 'Unknown date'} <span style="font-size:10px;color:var(--text3);font-weight:normal;margin-left:4px;">${session.className || ''}</span></div>
+              <div class="history-date">${session.date || 'Unknown date'}</div>
               <div class="history-meta">${startTime ? 'Started ' + startTime + ' · ' : ''}${pc2} present · ${lc2} late · ${STUDENTS.length - pc2 - lc2} absent</div>
               <div class="history-pills">
                 ${studs.map(s => `
@@ -964,6 +818,8 @@ function initBird() {
   draw();
   birdInterval = setInterval(() => { f=(f+1)%frames.length; draw(); }, 150);
 }
+
+ 
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/Attendance/sw.js'));
