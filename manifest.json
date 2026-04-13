@@ -1,0 +1,11 @@
+{
+  "name": "FlyBy",
+  "short_name": "FlyBy",
+  "description": "IT391 Attendance Tracker",
+  "start_url": "/Attendance/",
+  "scope": "/Attendance/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ce1126",
+  "icons": []
+}
