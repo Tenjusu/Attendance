@@ -3,11 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="FlyBy">
   <meta name="theme-color" content="#ce1126">
   <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐦</text></svg>">
   <title>FlyBy — IT391</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
@@ -953,6 +955,16 @@ function initBird() {
   draw();
   birdInterval = setInterval(() => { f=(f+1)%frames.length; draw(); }, 150);
 }
+
+  window.login = login;
+  window.logout = logout;
+  window.startSession = startSession;
+  window.endSession = endSession;
+  window.resetApp = resetApp;
+  window.showHistory = showHistory;
+  window.showReport = showReport;
+  window.toggleOverride = toggleOverride;
+  window.updateThreshold = updateThreshold;
 
 }); // end window.onload
 
