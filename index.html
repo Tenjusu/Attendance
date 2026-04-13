@@ -194,9 +194,14 @@
     .live-badge { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; color: var(--green); }
     .live-dot   { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 1.4s ease-in-out infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+    @keyframes tardyPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    .tardy-window-badge { display:flex; align-items:center; gap:5px; font-size:11px; font-weight:600; color:var(--red); animation: tardyPulse 1s ease-in-out infinite; }
+    .tardy-window-dot   { width:7px; height:7px; border-radius:50%; background:var(--red); animation: tardyPulse 1s ease-in-out infinite; }
+    .tardy-banner { padding:0.5rem 1rem; background:var(--red-bg); border-bottom:0.5px solid rgba(206,17,38,0.3); font-size:12px; color:var(--red); font-weight:500; text-align:center; }
 
     .timer-display { font-size: 22px; font-weight: 500; font-family: 'Fira Code', monospace; color: var(--text); letter-spacing: -0.02em; }
     .timer-display.urgent { color: var(--red); }
+    .timer-display.tardy { color: var(--red); animation: tardyPulse 1s ease-in-out infinite; }
     .count-badge { font-size: 12px; color: var(--text2); background: var(--bg2); border: 0.5px solid var(--border); border-radius: 20px; padding: 2px 9px; }
 
     #camera-wrap { position: relative; height: var(--scan-h); background: #0a0a0a; overflow: hidden; }
@@ -334,8 +339,11 @@ let STUDENTS        = [];
 let phase           = 'login';
 let currentUser     = null;
 let remaining       = SESSION_SECONDS;
-let attendance      = {};      // { id: { name, scannedAt, late, override } }
+let attendance      = {};      // { id: { name, scannedAt, late, override, absent } }
 let timerID         = null;
+let tardyTimerID    = null;
+let tardyWindowRemaining = 300;
+let overrideTarget  = null;
 let sessionDocID    = null;
 let lastToastTO     = null;
 let cameraRunning   = false;
@@ -368,7 +376,7 @@ async function login() {
 }
 
 function logout() {
-  stopCamera(); clearInterval(timerID); clearInterval(birdInterval);
+  stopCamera(); clearInterval(timerID); clearInterval(tardyTimerID); clearInterval(birdInterval);
   currentUser = null; phase = 'login'; render(); setTimeout(initBird, 0);
 }
 
@@ -405,7 +413,7 @@ async function startSession() {
   clearInterval(timerID);
   timerID = setInterval(() => {
     remaining--;
-    if (remaining <= 0) { clearInterval(timerID); endSession(); }
+    if (remaining <= 0) { clearInterval(timerID); startTardyWindow(); }
     else updateTimer();
   }, 1000);
   requestAnimationFrame(() => startCamera());
@@ -417,6 +425,24 @@ async function recordScan(barcodeValue) {
   if (attendance[student.id]) return;
 
   const scannedAt = new Date();
+
+  if (phase === 'tardyWindow') {
+    attendance[student.id] = { name: student.name, scannedAt, late: false, absent: true, override: false };
+    showPrivacyOverlay(student.name, false);
+    showToast(student.name + ' — marked absent (tardy window)', 'late');
+    updateCountBadge();
+    try {
+      await db.collection('sessions').doc(sessionDocID).update({
+        ['attendance.' + student.id]: {
+          name: student.name,
+          scannedAt: firebase.firestore.Timestamp.fromDate(scannedAt),
+          late: false, absent: true, override: false,
+        }
+      });
+    } catch(e) { console.warn('[Firebase] write:', e.message); }
+    return;
+  }
+
   const isLate    = remaining < lateThreshold;
   attendance[student.id] = { name: student.name, scannedAt, late: isLate, override: false };
 
@@ -436,39 +462,65 @@ async function recordScan(barcodeValue) {
   } catch(e) { console.warn('[Firebase] write:', e.message); }
 }
 
-// Manual override — toggle a student present on the summary screen
-async function toggleOverride(studentId) {
+// Manual override — inline menu on the summary screen
+function toggleOverride(studentId) {
+  overrideTarget = (overrideTarget === studentId ? null : studentId);
+  renderSummaryRows();
+}
+
+async function overrideMarkPresent(studentId) {
   const s = STUDENTS.find(s => s.id === studentId);
   if (!s) return;
-
-  if (attendance[studentId]) {
-    // Already present — remove them
-    delete attendance[studentId];
-  } else {
-    // Add as manual override
-    attendance[studentId] = { name: s.name, scannedAt: new Date(), late: false, override: true };
-  }
-
-  // Re-render summary rows only
+  attendance[studentId] = { name: s.name, scannedAt: new Date(), late: false, absent: false, override: true };
+  overrideTarget = null;
   renderSummaryRows();
-
-  // Persist to Firestore
   try {
-    const update = {};
-    if (attendance[studentId]) {
-      update['attendance.' + studentId] = {
+    await db.collection('sessions').doc(sessionDocID).update({
+      ['attendance.' + studentId]: {
         name: s.name,
         scannedAt: firebase.firestore.Timestamp.fromDate(attendance[studentId].scannedAt),
-        late: false, override: true,
-      };
-    } else {
-      update['attendance.' + studentId] = firebase.firestore.FieldValue.delete();
-    }
-    await db.collection('sessions').doc(sessionDocID).update(update);
+        late: false, absent: false, override: true,
+      }
+    });
   } catch(e) { console.warn('[Firebase] override write:', e.message); }
 }
 
+async function overrideMarkTardy(studentId) {
+  const s = STUDENTS.find(s => s.id === studentId);
+  if (!s) return;
+  attendance[studentId] = { name: s.name, scannedAt: new Date(), late: true, absent: false, override: true };
+  overrideTarget = null;
+  renderSummaryRows();
+  try {
+    await db.collection('sessions').doc(sessionDocID).update({
+      ['attendance.' + studentId]: {
+        name: s.name,
+        scannedAt: firebase.firestore.Timestamp.fromDate(attendance[studentId].scannedAt),
+        late: true, absent: false, override: true,
+      }
+    });
+  } catch(e) { console.warn('[Firebase] override write:', e.message); }
+}
+
+async function overrideMarkAbsent(studentId) {
+  const s = STUDENTS.find(s => s.id === studentId);
+  if (!s) return;
+  delete attendance[studentId];
+  overrideTarget = null;
+  renderSummaryRows();
+  try {
+    await db.collection('sessions').doc(sessionDocID).update({
+      ['attendance.' + studentId]: firebase.firestore.FieldValue.delete()
+    });
+  } catch(e) { console.warn('[Firebase] override write:', e.message); }
+}
+
+window.overrideMarkPresent = overrideMarkPresent;
+window.overrideMarkTardy   = overrideMarkTardy;
+window.overrideMarkAbsent  = overrideMarkAbsent;
+
 async function endSession() {
+  clearInterval(tardyTimerID);
   stopCamera(); phase = 'summary';
   try {
     await db.collection('sessions').doc(sessionDocID).update({
@@ -478,8 +530,25 @@ async function endSession() {
   render();
 }
 
+function startTardyWindow() {
+  phase = 'tardyWindow';
+  tardyWindowRemaining = 300;
+  render();
+  clearInterval(tardyTimerID);
+  tardyTimerID = setInterval(() => {
+    tardyWindowRemaining--;
+    if (tardyWindowRemaining <= 0) { clearInterval(tardyTimerID); endSession(); }
+    else {
+      const el = document.getElementById('tardy-timer');
+      if (el) el.textContent = fmt(tardyWindowRemaining);
+    }
+  }, 1000);
+}
+
 function resetApp() {
-  phase = 'ready'; attendance = {}; remaining = SESSION_SECONDS; sessionDocID = null;
+  clearInterval(tardyTimerID);
+  phase = 'ready'; attendance = {}; remaining = SESSION_SECONDS;
+  tardyWindowRemaining = 300; overrideTarget = null; sessionDocID = null;
   render(); setTimeout(initBird, 0);
 }
 
@@ -566,9 +635,10 @@ function fmtTime(d) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 function fmtMins(s) { return s >= 60 ? Math.round(s/60) + ' min' : s + ' sec'; }
-function presentCount() { return Object.values(attendance).filter(a => !a.late).length; }
-function lateCount()    { return Object.values(attendance).filter(a =>  a.late).length; }
-function totalCheckedIn(){ return presentCount() + lateCount(); }
+function presentCount() { return Object.values(attendance).filter(a => !a.late && !a.absent).length; }
+function lateCount()    { return Object.values(attendance).filter(a =>  a.late && !a.absent).length; }
+function tardyAbsentCount() { return Object.values(attendance).filter(a => a.absent).length; }
+function totalCheckedIn(){ return Object.values(attendance).filter(a => !a.absent).length; }
 
 function updateTimer() {
   const el = document.getElementById('timer');
@@ -614,7 +684,7 @@ function showPrivacyOverlay(name, isLate) {
 function updateThreshold(val) {
   lateThreshold = parseInt(val);
   const label = document.getElementById('threshold-label');
-  if (label) label.textContent = 'Late if scanned in last ' + fmtMins(lateThreshold);
+  if (label) label.textContent = 'Tardy after ' + fmt(SESSION_SECONDS - lateThreshold) + ' into session';
 }
 
 /* ─── Summary rows (partial re-render for override) ──── */
@@ -624,33 +694,60 @@ function renderSummaryRows() {
   container.innerHTML = STUDENTS.map(s => summaryRowHTML(s)).join('');
   const stats = document.getElementById('summary-stats');
   if (stats) {
-    const pc = presentCount(), lc = lateCount(), ac = STUDENTS.length - pc - lc;
+    const pc = presentCount(), lc = lateCount(), tac = tardyAbsentCount(), ac = STUDENTS.length - pc - lc - tac;
     stats.querySelector('.green').textContent = pc;
     stats.querySelector('.amber').textContent = lc;
-    stats.querySelector('.red').textContent   = ac;
+    stats.querySelector('.red').textContent   = ac + tac;
   }
 }
 
 function summaryRowHTML(s) {
   const a = attendance[s.id];
-  const present = !!a && !a.late, late = !!a && a.late, absent = !a;
-  const color = present ? 'var(--green)' : late ? 'var(--amber)' : 'var(--text2)';
-  const icon  = present ? '✓' : late ? '⏱' : '✕';
-  const label = present ? (a.override ? 'Override' : 'On time') : late ? 'Late' : 'Absent';
+  const isAbsent      = !a || a.absent;
+  const isTardyAbsent = !!a && a.absent;
+  const present = !!a && !a.late && !a.absent;
+  const late    = !!a && a.late && !a.absent;
+  const color = present ? 'var(--green)' : late ? 'var(--amber)' : isTardyAbsent ? 'var(--amber)' : 'var(--text2)';
+  const icon  = present ? '✓' : late ? '⏱' : isTardyAbsent ? '✕' : '✕';
+  const label = present ? (a.override ? 'Override' : 'On time') : late ? (a.override ? 'Override (late)' : 'Late') : isTardyAbsent ? 'Tardy-absent' : 'Absent';
   const overrideBadge = a && a.override ? '<span class="override-badge">Manual</span>' : '';
+  const tardyBadge    = isTardyAbsent ? ' <span class="late-badge">⏱</span>' : '';
+  const hintText = isAbsent ? 'Tap to mark present or tardy' : 'Tap to modify';
+
+  let menuHTML = '';
+  if (overrideTarget === s.id) {
+    if (isAbsent) {
+      menuHTML = `
+        <div style="display:flex;gap:6px;margin-top:6px;" onclick="event.stopPropagation()">
+          <button class="btn sm" onclick="overrideMarkPresent('${s.id}')" style="border-color:var(--green);color:var(--green);">Mark Present</button>
+          <button class="btn sm" onclick="overrideMarkTardy('${s.id}')" style="border-color:var(--amber);color:var(--amber);">Mark Tardy</button>
+          <button class="btn sm ghost" onclick="toggleOverride('${s.id}')">Cancel</button>
+        </div>`;
+    } else {
+      menuHTML = `
+        <div style="display:flex;gap:6px;margin-top:6px;" onclick="event.stopPropagation()">
+          <button class="btn sm" onclick="overrideMarkAbsent('${s.id}')" style="border-color:var(--red);color:var(--red);">Mark Absent</button>
+          <button class="btn sm ghost" onclick="toggleOverride('${s.id}')">Cancel</button>
+        </div>`;
+    }
+  }
+
   return `
   <div class="summary-row tappable" onclick="toggleOverride('${s.id}')"
-       style="background:${present?'var(--green-bg)':late?'var(--amber-bg)':'var(--bg)'}">
-    <div style="display:flex;align-items:center;gap:8px;">
-      <span style="font-size:13px;color:${color}">${icon}</span>
-      <div>
-        <span style="font-size:13px;font-weight:500;color:${color}">${s.name}</span>${overrideBadge}
-        <div style="font-size:10px;color:${color};opacity:0.7">Tap to ${absent ? 'mark present' : 'mark absent'}</div>
+       style="background:${present?'var(--green-bg)':late?'var(--amber-bg)':isTardyAbsent?'var(--amber-bg)':'var(--bg)'}">
+    <div style="display:flex;align-items:flex-start;gap:8px;flex:1;flex-direction:column;">
+      <div style="display:flex;align-items:center;gap:8px;width:100%;">
+        <span style="font-size:13px;color:${color}">${icon}</span>
+        <div style="flex:1;">
+          <span style="font-size:13px;font-weight:500;color:${color}">${s.name}</span>${overrideBadge}${tardyBadge}
+          <div style="font-size:10px;color:${color};opacity:0.7">${hintText}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          ${a && !a.absent ? `<span style="font-size:11px;font-family:monospace;color:${color}">${fmtTime(a.scannedAt)}</span>` : ''}
+          <span style="font-size:10px;color:${color};opacity:0.8">${label}</span>
+        </div>
       </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:6px;">
-      ${a ? `<span style="font-size:11px;font-family:monospace;color:${color}">${fmtTime(a.scannedAt)}</span>` : ''}
-      <span style="font-size:10px;color:${color};opacity:0.8">${label}</span>
+      ${menuHTML}
     </div>
   </div>`;
 }
@@ -710,7 +807,7 @@ function render() {
         <span class="settings-label">Tardy threshold</span>
         <input type="range" min="30" max="300" step="30" value="${lateThreshold}"
                oninput="updateThreshold(this.value)">
-        <span class="settings-value" id="threshold-label">Late if scanned in last ${fmtMins(lateThreshold)}</span>
+        <span class="settings-value" id="threshold-label">Tardy after ${fmt(SESSION_SECONDS - lateThreshold)} into session</span>
       </div>
 
       <div class="section-label">
@@ -734,7 +831,7 @@ function render() {
       </div>
 
       <div class="footer-buttons">
-        <button class="btn primary" onclick="startSession()">Begin 6-minute session</button>
+        <button class="btn primary" onclick="startSession()">Begin Session</button>
         <button class="btn ghost"   onclick="showHistory()">View attendance history</button>
         <button class="btn ghost"   onclick="showReport()">Semester report</button>
         <button class="btn danger"  onclick="logout()">Sign out</button>
@@ -770,9 +867,39 @@ function render() {
     return;
   }
 
+  /* TARDY WINDOW — 5-minute grace period after session ends */
+  if (phase === 'tardyWindow') {
+    app.innerHTML = `
+      <div class="scan-bar">
+        <div class="tardy-window-badge"><div class="tardy-window-dot"></div>TARDY WINDOW</div>
+        <span id="tardy-timer" class="timer-display tardy">${fmt(tardyWindowRemaining)}</span>
+        <span id="scan-count" class="count-badge">${totalCheckedIn()} / ${STUDENTS.length}</span>
+      </div>
+
+      <div class="tardy-banner">⚠ Students scanning now will be marked absent</div>
+
+      <div id="camera-wrap">
+        <div class="reticle"><div class="reticle-inner"></div><div class="scanline"></div></div>
+        <div class="camera-hint">Hold student ID barcode in frame</div>
+      </div>
+
+      <div id="scan-toast" class="scan-toast empty">Hold barcode in frame to scan</div>
+
+      <div class="blind-bar">
+        <span class="blind-bar-label" id="blind-count">${totalCheckedIn()} / ${STUDENTS.length} checked in</span>
+        <span style="font-size:10px;color:var(--text3);">Roster hidden until session ends</span>
+      </div>
+
+      <div class="footer-buttons">
+        <button class="btn ghost" onclick="endSession()">End session &amp; reveal roster</button>
+      </div>`;
+    requestAnimationFrame(() => startCamera());
+    return;
+  }
+
   /* SUMMARY — with manual override */
   if (phase === 'summary') {
-    const pc = presentCount(), lc = lateCount(), ac = STUDENTS.length - pc - lc;
+    const pc = presentCount(), lc = lateCount(), tac = tardyAbsentCount(), ac = STUDENTS.length - pc - lc - tac;
     app.innerHTML = `
       <div class="header">
         <p class="header-label">Session complete</p>
@@ -783,7 +910,7 @@ function render() {
       <div class="summary-stats" id="summary-stats">
         <div class="stat-card"><div class="stat-label">Present</div><div class="stat-value green">${pc}</div></div>
         <div class="stat-card"><div class="stat-label">Late</div><div class="stat-value amber">${lc}</div></div>
-        <div class="stat-card"><div class="stat-label">Absent</div><div class="stat-value red">${ac}</div></div>
+        <div class="stat-card"><div class="stat-label">Absent</div><div class="stat-value red">${ac + tac}</div></div>
       </div>
 
       <div class="section-label">
