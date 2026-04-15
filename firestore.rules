@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Classes — only the professor who owns them can read/write
+    match /classes/{classId} {
+      allow read, write: if true; // tighten with Auth later
+      match /students/{studentId} {
+        allow read, write: if true;
+      }
+    }
+
+    // Sessions — allow create/update during active session window only
+    match /sessions/{sessionId} {
+      allow create: if true;
+      allow read:   if true;
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    // Students (legacy root collection)
+    match /Students/{doc} {
+      allow read: if true;
+      allow write: if false; // manage from Firebase console only
+    }
+  }
+}
