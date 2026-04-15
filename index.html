@@ -3,427 +3,207 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes"> ```
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="FlyBy">
   <meta name="theme-color" content="#CE1126">
   <link rel="manifest" href="manifest.json">
   <title>FlyBy — ISU Attendance</title>
-
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-app-compat.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-firestore-compat.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
-
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    /* ── Light mode — matches slide color scheme ──────── */
-    :root {
-      --isu:        #CE1126;
-      --isu-dark:   #A50D1E;
-      --isu-light:  #FDECEA;
-      --bg:         #FFFFFF;
-      --bg2:        #F5F5F5;
-      --bg3:        #EBEBEB;
-      --border:     rgba(0,0,0,0.10);
-      --border2:    rgba(0,0,0,0.18);
-      --text:       #212121;
-      --text2:      #595959;
-      --text3:      #9E9E9E;
-      --green:      #1E7E4A;
-      --green-bg:   #E8F5E9;
-      --green-br:   rgba(30,126,74,0.2);
-      --amber:      #92400e;
-      --amber-bg:   #FFF8E1;
-      --amber-br:   rgba(146,64,14,0.2);
-      --red:        #CE1126;
-      --red-bg:     #FDECEA;
-      --blue:       #1565C0;
-      --blue-bg:    #E3F2FD;
-      --r-sm:       6px;
-      --r-md:       10px;
-      --r-lg:       16px;
-      --scan-h:     280px;
-      --header-h:   56px;
-    }
-
-    /* ── Dark mode — keep original ─────────────────────── */
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg:       #121212;
-        --bg2:      #1e1e1e;
-        --bg3:      #000000;
-        --border:   rgba(255,255,255,0.09);
-        --border2:  rgba(255,255,255,0.16);
-        --text:     #ffffff;
-        --text2:    #d4d4d8;
-        --text3:    #9ca3af;
-        --green:    #4cc38a;
-        --green-bg: #0d2b1d;
-        --green-br: rgba(76,195,138,0.22);
-        --amber:    #fbbf24;
-        --amber-bg: #1c1500;
-        --amber-br: rgba(251,191,36,0.2);
-        --red:      #CE1126;
-        --red-bg:   #2e1213;
-        --blue:     #6badea;
-        --blue-bg:  #0c2340;
-        --isu-light:#2e1213;
-      }
-    }
-
-    body {
-      font-family: 'Fira Code', 'Fira Mono', monospace;
-      background: var(--bg3);
-      min-height: 100vh;
-      display: flex; align-items: flex-start; justify-content: center;
-      padding: 0 0 3rem;
-    }
-
-    #app {
-      width: 100%; max-width: 390px;
-      background: var(--bg);
-      min-height: 100vh;
-      display: flex; flex-direction: column;
-      overflow: hidden;
-    }
-
-    /* ── ISU Top header bar ───────────────────────────── */
-    .isu-header {
-      background: var(--isu);
-      color: #fff;
-      padding: 0 1rem;
-      height: var(--header-h);
-      display: flex; align-items: center; justify-content: space-between;
-      flex-shrink: 0;
-    }
-    .isu-header-title { font-size: 16px; font-weight: 600; letter-spacing: 0.01em; }
-    .isu-header-sub   { font-size: 10px; opacity: 0.8; margin-top: 2px; }
-    .isu-back-btn {
-      background: rgba(255,255,255,0.18); border: none; color: #fff;
-      border-radius: var(--r-sm); padding: 5px 10px;
-      font-size: 12px; font-family: 'Fira Code', monospace;
-      cursor: pointer; flex-shrink: 0;
-    }
-    .isu-action-btn {
-      background: rgba(255,255,255,0.18); border: none; color: #fff;
-      border-radius: var(--r-sm); padding: 5px 10px;
-      font-size: 11px; font-weight: 600; font-family: 'Fira Code', monospace;
-      cursor: pointer; flex-shrink: 0; white-space: nowrap;
-    }
-    .isu-timer-display {
-      font-size: 28px; font-weight: 600; font-family: 'Fira Code', monospace;
-      color: #fff; letter-spacing: -0.02em;
-    }
-    .isu-timer-display.urgent { color: #FFD0D0; animation: urgentPulse 1s ease-in-out infinite; }
-    @keyframes urgentPulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
-
-    /* ── Buttons ──────────────────────────────────────── */
-    .btn {
-      display: block; width: 100%; padding: 0.75rem 1rem;
-      font-size: 14px; font-weight: 600; text-align: center;
-      border: 1.5px solid var(--border2); border-radius: var(--r-md);
-      background: var(--bg); color: var(--text);
-      cursor: pointer; -webkit-tap-highlight-color: transparent;
-      font-family: 'Fira Code', monospace;
-      transition: opacity 0.12s, background 0.12s;
-    }
-    .btn:active { opacity: 0.8; }
-    .btn.primary { background: var(--isu); color: #fff; border-color: transparent; }
-    .btn.secondary { background: var(--bg2); color: var(--text2); border-color: var(--border); font-size: 13px; }
-    .btn.danger { background: transparent; color: var(--amber); border-color: var(--amber-br); font-size: 13px; }
-    .btn.outline-red { background: transparent; color: var(--isu); border-color: var(--isu); font-size: 13px; }
-    .btn.sm { padding: 0.4rem 0.85rem; font-size: 12px; width: auto; border-radius: var(--r-sm); }
-    .btn.green { background: var(--green); color: #fff; border-color: transparent; }
-    .btn.amber-btn { background: var(--amber); color: #fff; border-color: transparent; }
-
-    /* ── Login ────────────────────────────────────────── */
-    .login-wrap { padding: 2.5rem 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 0.85rem; flex: 1; }
-    .login-logo { display: flex; flex-direction: column; align-items: center; margin-bottom: 1rem; gap: 8px; }
-    .login-logo-title { font-size: 26px; font-weight: 600; color: var(--isu); }
-    .login-logo-sub   { font-size: 11px; color: var(--text3); }
-
-    .input-group { display: flex; flex-direction: column; gap: 5px; }
-    .input-label { font-size: 11px; color: var(--text2); letter-spacing: 0.05em; text-transform: uppercase; font-weight: 500; }
-    .input-field {
-      padding: 0.7rem 0.9rem; font-size: 14px; color: var(--text);
-      background: var(--bg2); border: 1.5px solid var(--border2);
-      border-radius: var(--r-md); outline: none; width: 100%;
-      font-family: 'Fira Code', monospace;
-    }
-    .input-field:focus { border-color: var(--isu); }
-    .login-error {
-      font-size: 12px; color: var(--isu); background: var(--isu-light);
-      border: 1px solid rgba(206,17,38,0.2); border-radius: var(--r-md);
-      padding: 0.55rem 0.85rem; display: none;
-    }
-    .login-error.show { display: block; }
-
-    /* ── Content area ─────────────────────────────────── */
-    .content { flex: 1; overflow-y: auto; }
-
-    /* ── Section label ────────────────────────────────── */
-    .section-label {
-      font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
-      color: var(--text3); font-weight: 600;
-      padding: 0.65rem 1rem 0.35rem;
-      border-bottom: 0.5px solid var(--border);
-      background: var(--bg2);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-
-    /* ── Class card (class selection) ─────────────────── */
-    .class-card {
-      margin: 0.85rem; padding: 1rem 1.1rem;
-      background: var(--bg); border: 1.5px solid var(--border);
-      border-radius: var(--r-lg);
-      cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .class-card:active { border-color: var(--isu); }
-    .class-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
-    .class-code { font-size: 13px; font-weight: 600; color: var(--isu); }
-    .class-section-badge {
-      font-size: 10px; background: var(--isu-light); color: var(--isu);
-      border-radius: 20px; padding: 2px 8px; font-weight: 600;
-    }
-    .class-name { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 6px; line-height: 1.4; }
-    .class-meta { font-size: 11px; color: var(--text3); display: flex; flex-direction: column; gap: 2px; }
-    .class-meta-row { display: flex; align-items: center; gap: 6px; }
-    .class-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border); }
-    .class-enrolled { font-size: 11px; color: var(--text2); }
-    .class-view-btn { font-size: 11px; font-weight: 600; color: var(--isu); background: none; border: none; cursor: pointer; font-family: 'Fira Code', monospace; }
-
-    /* ── Dashboard stat cards ─────────────────────────── */
-    .stat-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 1rem; }
-    .stat-card { background: var(--bg2); border-radius: var(--r-md); padding: 0.75rem 0.5rem; text-align: center; border: 0.5px solid var(--border); }
-    .stat-num  { font-size: 28px; font-weight: 600; font-family: 'Fira Code', monospace; }
-    .stat-lbl  { font-size: 10px; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 3px; }
-    .stat-num.green { color: var(--green); }
-    .stat-num.amber { color: var(--amber); }
-    .stat-num.gray  { color: var(--text3); }
-    .stat-num.red   { color: var(--red); }
-
-    /* ── Student rows ─────────────────────────────────── */
-    .student-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0.65rem 1rem; border-bottom: 0.5px solid var(--border);
-      transition: background 0.15s;
-    }
-    .student-row:last-child { border-bottom: none; }
-    .student-row.tappable { cursor: pointer; }
-    .student-row.tappable:active { background: var(--bg2); }
-
-    .avatar {
-      width: 34px; height: 34px; border-radius: 50%;
-      background: var(--bg2); border: 1.5px solid var(--border);
-      color: var(--text2); font-size: 11px; font-weight: 600;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .avatar.present { background: var(--green-bg); color: var(--green); border-color: var(--green-br); }
-    .avatar.late    { background: var(--amber-bg);  color: var(--amber); border-color: var(--amber-br); }
-
-    .student-info { flex: 1; margin: 0 10px; }
-    .student-name { font-size: 13px; font-weight: 500; color: var(--text); }
-    .student-id   { font-size: 10px; color: var(--text3); font-family: 'Fira Code', monospace; margin-top: 1px; }
-
-    /* ── Status pill ──────────────────────────────────── */
-    .status-pill {
-      font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
-      padding: 3px 9px; border-radius: 20px; white-space: nowrap;
-    }
-    .status-pill.present { background: var(--green-bg); color: var(--green); border: 0.5px solid var(--green-br); }
-    .status-pill.late    { background: var(--amber-bg); color: var(--amber); border: 0.5px solid var(--amber-br); }
-    .status-pill.absent  { background: var(--bg2);      color: var(--text3); border: 0.5px solid var(--border); }
-    .status-pill.override { background: var(--blue-bg); color: var(--blue);  border: 0.5px solid rgba(21,101,192,0.2); }
-
-    /* ── Camera viewport ──────────────────────────────── */
-    #camera-wrap { position: relative; height: var(--scan-h); background: #0a0a0a; overflow: hidden; flex-shrink: 0; }
-    #camera-wrap video, #camera-wrap canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-    #camera-wrap canvas { display: none; }
-
-    .reticle { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 240px; height: 68px; pointer-events: none; }
-    .reticle::before,.reticle::after,.reticle-inner::before,.reticle-inner::after { content: ''; position: absolute; width: 20px; height: 20px; border-color: #fff; border-style: solid; }
-    .reticle::before  { top:0;    left:0;  border-width: 2px 0 0 2px; }
-    .reticle::after   { top:0;    right:0; border-width: 2px 2px 0 0; }
-    .reticle-inner::before { bottom:0; left:0;  border-width: 0 0 2px 2px; }
-    .reticle-inner::after  { bottom:0; right:0; border-width: 0 2px 2px 0; }
-    .scanline { position: absolute; left: 12px; right: 12px; height: 2px; background: var(--isu); opacity: 0.8; animation: scanline 2s linear infinite; }
-    @keyframes scanline { 0%{top:8px} 100%{top:calc(100% - 8px)} }
-    .camera-hint { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 11px; color: rgba(255,255,255,0.5); }
-
-    /* ── Privacy overlay ──────────────────────────────── */
-    .privacy-overlay {
-      position: absolute; inset: 0;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.88); gap: 8px;
-      animation: fadeOut 0.4s ease 2.2s forwards; pointer-events: none;
-    }
-    .privacy-overlay .check-icon { font-size: 44px; }
-    .privacy-overlay .priv-name  { font-size: 20px; font-weight: 600; color: #fff; font-family: 'Fira Code', monospace; }
-    .privacy-overlay .priv-sub   { font-size: 12px; color: rgba(255,255,255,0.5); }
-    @keyframes fadeOut { to { opacity: 0; } }
-
-    /* ── Scan/manual tab switcher ─────────────────────── */
-    .tab-bar {
-      display: flex; border-bottom: 1.5px solid var(--border);
-      background: var(--bg); flex-shrink: 0;
-    }
-    .tab-btn {
-      flex: 1; padding: 0.6rem; font-size: 12px; font-weight: 600;
-      font-family: 'Fira Code', monospace; background: none; border: none;
-      color: var(--text3); cursor: pointer;
-      border-bottom: 2px solid transparent; margin-bottom: -1.5px;
-      transition: color 0.15s, border-color 0.15s;
-    }
-    .tab-btn.active { color: var(--isu); border-bottom-color: var(--isu); }
-
-    /* ── Manual mark bottom sheet ─────────────────────── */
-    .sheet-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-      display: flex; align-items: flex-end; justify-content: center;
-      z-index: 100; animation: sheetFadeIn 0.2s ease;
-    }
-    @keyframes sheetFadeIn { from{opacity:0} to{opacity:1} }
-    .sheet {
-      background: var(--bg); border-radius: var(--r-lg) var(--r-lg) 0 0;
-      padding: 1.25rem 1.25rem 2rem; width: 100%; max-width: 390px;
-      animation: sheetSlideUp 0.25s ease;
-    }
-    @keyframes sheetSlideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
-    .sheet-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 1rem; }
-    .sheet-name { font-size: 16px; font-weight: 600; color: var(--text); text-align: center; margin-bottom: 4px; }
-    .sheet-sub  { font-size: 11px; color: var(--text3); text-align: center; margin-bottom: 1.25rem; }
-    .sheet-btns { display: flex; flex-direction: column; gap: 0.6rem; }
-    .sheet-cancel { font-size: 13px; color: var(--text3); background: none; border: none; cursor: pointer; text-align: center; padding: 0.5rem; font-family: 'Fira Code', monospace; width: 100%; margin-top: 0.25rem; }
-
-    /* ── Session duration picker ──────────────────────── */
-    .duration-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 0.75rem 0; }
-    .dur-btn {
-      padding: 0.6rem 0; font-size: 13px; font-weight: 600; text-align: center;
-      border: 1.5px solid var(--border); border-radius: var(--r-md);
-      background: var(--bg2); color: var(--text2); cursor: pointer;
-      font-family: 'Fira Code', monospace; transition: all 0.12s;
-    }
-    .dur-btn.selected { border-color: var(--isu); background: var(--isu-light); color: var(--isu); }
-
-    /* ── Toast ────────────────────────────────────────── */
-    .toast {
-      padding: 0.6rem 1rem; font-size: 12px; font-weight: 500;
-      min-height: 36px; display: flex; align-items: center; gap: 6px;
-      border-bottom: 0.5px solid var(--border); flex-shrink: 0;
-    }
-    .toast.ok    { background: var(--green-bg); color: var(--green); }
-    .toast.late  { background: var(--amber-bg); color: var(--amber); }
-    .toast.empty { background: var(--bg2); color: var(--text3); font-weight: 400; }
-
-    /* ── Blind count bar ──────────────────────────────── */
-    .blind-bar {
-      padding: 0.8rem 1rem; display: flex; align-items: center;
-      justify-content: space-between; border-bottom: 0.5px solid var(--border);
-      background: var(--bg2); flex-shrink: 0;
-    }
-    .blind-count { font-size: 22px; font-weight: 600; color: var(--green); font-family: 'Fira Code', monospace; }
-    .blind-label { font-size: 11px; color: var(--text3); }
-
-    /* ── Footer ───────────────────────────────────────── */
-    .footer-pad { padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; flex-shrink: 0; }
-
-    /* ── Spinner ──────────────────────────────────────── */
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border2); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Typing animation ─────────────────────────────── */
-    .typing-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .typing-line {
-      font-family: 'Fira Code', monospace; font-size: 34px; font-weight: 600; color: var(--isu);
-      overflow: hidden; white-space: nowrap; width: 0; border-right: 2.5px solid var(--isu);
-      animation: typeIn 0.7s steps(5,end) 0.2s forwards, cursorBlink 0.8s step-end 0.9s 4, cursorFade 0.1s ease 3.5s forwards;
-    }
-    .typing-sub {
-      font-family: 'Fira Code', monospace; font-size: 11px; color: var(--text3);
-      overflow: hidden; white-space: nowrap; width: 0; opacity: 0;
-      animation: typeInSub 0.6s steps(28,end) 1.2s forwards;
-    }
-    @keyframes typeIn      { from{width:0} to{width:5ch} }
-    @keyframes typeInSub   { from{width:0;opacity:1} to{width:28ch;opacity:1} }
-    @keyframes cursorBlink { 0%,100%{border-color:var(--isu)} 50%{border-color:transparent} }
-    @keyframes cursorFade  { to{border-color:transparent} }
-
-    /* ── History & report ─────────────────────────────── */
-    .history-session { padding: 0.85rem 1rem; border-bottom: 0.5px solid var(--border); }
-    .history-session:last-child { border-bottom: none; }
-    .history-date  { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
-    .history-meta  { font-size: 11px; color: var(--text2); margin-bottom: 7px; }
-    .history-pills { display: flex; flex-wrap: wrap; gap: 5px; }
-    .history-pill  { font-size: 10px; padding: 2px 9px; border-radius: 20px; border: 0.5px solid var(--border); }
-    .history-pill.present { background: var(--green-bg); color: var(--green); border-color: var(--green-br); }
-    .history-pill.late    { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-br); }
-    .history-pill.absent  { background: var(--bg2); color: var(--text3); }
-
-    .report-row { display: flex; align-items: center; justify-content: space-between; padding: 0.7rem 1rem; border-bottom: 0.5px solid var(--border); }
-    .report-row:last-child { border-bottom: none; }
-    .report-name { font-size: 13px; font-weight: 500; color: var(--text); }
-    .report-pct  { font-size: 10px; color: var(--text3); margin-top: 2px; }
-    .report-stats { display: flex; gap: 8px; font-size: 11px; font-family: 'Fira Code', monospace; }
-    .rp { color: var(--green); } .rl { color: var(--amber); } .ra { color: var(--text3); }
-
-    .empty-state { padding: 2.5rem 1rem; text-align: center; color: var(--text3); font-size: 12px; }
-    .note-box { margin: 1rem; padding: 0.75rem 0.9rem; background: var(--bg2); border-radius: var(--r-md); border: 0.5px solid var(--border); font-size: 11px; color: var(--text2); line-height: 1.6; }
-
-    /* ── Settings row ─────────────────────────────────── */
-    .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-bottom: 0.5px solid var(--border); gap: 12px; }
-    .settings-label { font-size: 12px; color: var(--text2); white-space: nowrap; }
-    .settings-val   { font-size: 12px; font-weight: 600; color: var(--amber); min-width: 70px; text-align: right; white-space: nowrap; }
-    input[type=range] { flex: 1; accent-color: var(--isu); }
-
-    /* ── Live badge ───────────────────────────────────── */
-    .live-badge { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #fff; }
-    .live-dot   { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: pulse 1.4s ease-in-out infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
-
-    .cam-error { display: flex; flex-direction: column; align-items: center; justify-content: center; height: var(--scan-h); background: #0a0a0a; gap: 6px; }
-    .cam-error p { font-size: 12px; color: rgba(255,255,255,0.45); text-align: center; padding: 0 1.5rem; }
-  </style>
 </head>
 <body>
 <main id="app"></main>
 
-<script>
-window.addEventListener('load', function() {
+<!-- Load Firebase + Quagga FIRST, then our script -->
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-firestore-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
 
-/* ─── CONFIG ──────────────────────────────────────────── */
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --isu:#CE1126; --isu-dark:#A50D1E; --isu-light:#FDECEA;
+  --bg:#FFFFFF; --bg2:#F5F5F5; --bg3:#EBEBEB;
+  --border:rgba(0,0,0,0.10); --border2:rgba(0,0,0,0.18);
+  --text:#212121; --text2:#595959; --text3:#9E9E9E;
+  --green:#1E7E4A; --green-bg:#E8F5E9; --green-br:rgba(30,126,74,0.2);
+  --amber:#92400e; --amber-bg:#FFF8E1; --amber-br:rgba(146,64,14,0.2);
+  --red:#CE1126; --red-bg:#FDECEA;
+  --blue:#1565C0; --blue-bg:#E3F2FD;
+  --r-sm:6px; --r-md:10px; --r-lg:16px;
+  --scan-h:280px; --header-h:56px;
+}
+@media (prefers-color-scheme:dark) {
+  :root {
+    --bg:#121212; --bg2:#1e1e1e; --bg3:#000000;
+    --border:rgba(255,255,255,0.09); --border2:rgba(255,255,255,0.16);
+    --text:#ffffff; --text2:#d4d4d8; --text3:#9ca3af;
+    --green:#4cc38a; --green-bg:#0d2b1d; --green-br:rgba(76,195,138,0.22);
+    --amber:#fbbf24; --amber-bg:#1c1500; --amber-br:rgba(251,191,36,0.2);
+    --red:#CE1126; --red-bg:#2e1213; --blue:#6badea; --blue-bg:#0c2340;
+    --isu-light:#2e1213;
+  }
+}
+body { font-family:'Fira Code','Fira Mono',monospace; background:var(--bg3); min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:1rem 0.75rem 3rem; }
+#app { width:100%; max-width:390px; background:var(--bg); border-radius:var(--r-lg); border:0.5px solid var(--border); overflow:hidden; }
+.isu-header { background:var(--isu); color:#fff; padding:0 1rem; height:var(--header-h); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.isu-header-title { font-size:16px; font-weight:600; }
+.isu-header-sub { font-size:10px; opacity:0.8; margin-top:2px; }
+.isu-back-btn { background:rgba(255,255,255,0.18); border:none; color:#fff; border-radius:var(--r-sm); padding:5px 10px; font-size:12px; font-family:'Fira Code',monospace; cursor:pointer; }
+.isu-timer { font-size:26px; font-weight:600; font-family:'Fira Code',monospace; color:#fff; }
+.isu-timer.urgent { color:#FFD0D0; animation:upulse 1s ease-in-out infinite; }
+@keyframes upulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+.btn { display:block; width:100%; padding:0.75rem 1rem; font-size:14px; font-weight:600; text-align:center; border:1.5px solid var(--border2); border-radius:var(--r-md); background:var(--bg); color:var(--text); cursor:pointer; font-family:'Fira Code',monospace; transition:opacity 0.12s; }
+.btn:active { opacity:0.8; }
+.btn.primary { background:var(--isu); color:#fff; border-color:transparent; }
+.btn.secondary { background:var(--bg2); color:var(--text2); border-color:var(--border); font-size:13px; }
+.btn.danger { background:transparent; color:var(--amber); border-color:var(--amber-br); font-size:13px; }
+.btn.sm { padding:0.4rem 0.85rem; font-size:12px; width:auto; border-radius:var(--r-sm); }
+.btn.green { background:var(--green); color:#fff; border-color:transparent; }
+.btn.amber-btn { background:var(--amber); color:#fff; border-color:transparent; }
+.login-wrap { padding:2.5rem 1.25rem 1.5rem; display:flex; flex-direction:column; gap:0.85rem; }
+.login-logo { display:flex; flex-direction:column; align-items:center; margin-bottom:1rem; gap:8px; }
+.input-group { display:flex; flex-direction:column; gap:5px; }
+.input-label { font-size:11px; color:var(--text2); letter-spacing:0.05em; text-transform:uppercase; font-weight:500; }
+.input-field { padding:0.7rem 0.9rem; font-size:14px; color:var(--text); background:var(--bg2); border:1.5px solid var(--border2); border-radius:var(--r-md); outline:none; width:100%; font-family:'Fira Code',monospace; }
+.input-field:focus { border-color:var(--isu); }
+.login-error { font-size:12px; color:var(--isu); background:var(--isu-light); border:1px solid rgba(206,17,38,0.2); border-radius:var(--r-md); padding:0.55rem 0.85rem; display:none; }
+.login-error.show { display:block; }
+.section-label { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text3); font-weight:600; padding:0.65rem 1rem 0.35rem; border-bottom:0.5px solid var(--border); background:var(--bg2); display:flex; align-items:center; justify-content:space-between; }
+.class-card { margin:0.85rem; padding:1rem 1.1rem; background:var(--bg); border:1.5px solid var(--border); border-radius:var(--r-lg); cursor:pointer; }
+.class-card:active { border-color:var(--isu); }
+.class-card-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:8px; }
+.class-code { font-size:13px; font-weight:600; color:var(--isu); }
+.class-section-badge { font-size:10px; background:var(--isu-light); color:var(--isu); border-radius:20px; padding:2px 8px; font-weight:600; }
+.class-name { font-size:12px; font-weight:500; color:var(--text); margin-bottom:6px; line-height:1.4; }
+.class-footer { display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding-top:10px; border-top:0.5px solid var(--border); }
+.class-enrolled { font-size:11px; color:var(--text2); }
+.class-view-btn { font-size:11px; font-weight:600; color:var(--isu); background:none; border:none; cursor:pointer; font-family:'Fira Code',monospace; }
+.stat-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding:1rem; }
+.stat-card { background:var(--bg2); border-radius:var(--r-md); padding:0.75rem 0.5rem; text-align:center; border:0.5px solid var(--border); }
+.stat-num { font-size:28px; font-weight:600; font-family:'Fira Code',monospace; }
+.stat-lbl { font-size:10px; color:var(--text3); letter-spacing:0.06em; text-transform:uppercase; margin-top:3px; }
+.stat-num.green { color:var(--green); } .stat-num.amber { color:var(--amber); } .stat-num.gray { color:var(--text3); } .stat-num.red { color:var(--red); }
+.student-row { display:flex; align-items:center; justify-content:space-between; padding:0.6rem 1rem; border-bottom:0.5px solid var(--border); transition:background 0.15s; }
+.student-row:last-child { border-bottom:none; }
+.student-row.tappable { cursor:pointer; }
+.student-row.tappable:active { background:var(--bg2); }
+.avatar { width:32px; height:32px; border-radius:50%; background:#000; color:#fff; font-size:11px; font-weight:500; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.avatar.present { background:var(--green-bg); color:var(--green); }
+.avatar.late { background:var(--amber-bg); color:var(--amber); }
+.student-info { flex:1; margin:0 10px; }
+.student-name { font-size:13px; font-weight:500; color:var(--text); }
+.student-id { font-size:10px; color:var(--text3); font-family:'Fira Code',monospace; margin-top:1px; }
+.status-pill { font-size:10px; font-weight:600; letter-spacing:0.04em; padding:3px 9px; border-radius:20px; white-space:nowrap; }
+.status-pill.present { background:var(--green-bg); color:var(--green); border:0.5px solid var(--green-br); }
+.status-pill.late { background:var(--amber-bg); color:var(--amber); border:0.5px solid var(--amber-br); }
+.status-pill.absent { background:var(--bg2); color:var(--text3); border:0.5px solid var(--border); }
+.status-pill.override { background:var(--blue-bg); color:var(--blue); border:0.5px solid rgba(21,101,192,0.2); }
+#camera-wrap { position:relative; height:var(--scan-h); background:#0a0a0a; overflow:hidden; }
+#camera-wrap video, #camera-wrap canvas { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; }
+#camera-wrap canvas { display:none; }
+.reticle { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:240px; height:68px; pointer-events:none; }
+.reticle::before,.reticle::after,.reticle-inner::before,.reticle-inner::after { content:''; position:absolute; width:20px; height:20px; border-color:#fff; border-style:solid; }
+.reticle::before { top:0; left:0; border-width:2px 0 0 2px; }
+.reticle::after  { top:0; right:0; border-width:2px 2px 0 0; }
+.reticle-inner::before { bottom:0; left:0; border-width:0 0 2px 2px; }
+.reticle-inner::after  { bottom:0; right:0; border-width:0 2px 2px 0; }
+.scanline { position:absolute; left:12px; right:12px; height:2px; background:var(--isu); opacity:0.8; animation:scanline 2s linear infinite; }
+@keyframes scanline { 0%{top:8px} 100%{top:calc(100% - 8px)} }
+.camera-hint { position:absolute; bottom:10px; left:0; right:0; text-align:center; font-size:11px; color:rgba(255,255,255,0.5); }
+.privacy-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.88); gap:8px; animation:fadeOut 0.4s ease 2.2s forwards; pointer-events:none; }
+.privacy-overlay .p-icon { font-size:44px; }
+.privacy-overlay .p-name { font-size:20px; font-weight:600; color:#fff; font-family:'Fira Code',monospace; }
+.privacy-overlay .p-sub  { font-size:12px; color:rgba(255,255,255,0.5); }
+@keyframes fadeOut { to{opacity:0} }
+.tab-bar { display:flex; border-bottom:1.5px solid var(--border); background:var(--bg); }
+.tab-btn { flex:1; padding:0.6rem; font-size:12px; font-weight:600; font-family:'Fira Code',monospace; background:none; border:none; color:var(--text3); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1.5px; transition:color 0.15s,border-color 0.15s; }
+.tab-btn.active { color:var(--isu); border-bottom-color:var(--isu); }
+.sheet-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:flex-end; justify-content:center; z-index:100; }
+.sheet { background:var(--bg); border-radius:var(--r-lg) var(--r-lg) 0 0; padding:1.25rem 1.25rem 2rem; width:100%; max-width:390px; animation:slideUp 0.25s ease; }
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.sheet-handle { width:36px; height:4px; background:var(--border2); border-radius:2px; margin:0 auto 1rem; }
+.sheet-name { font-size:16px; font-weight:600; color:var(--text); text-align:center; margin-bottom:4px; }
+.sheet-sub  { font-size:11px; color:var(--text3); text-align:center; margin-bottom:1.25rem; }
+.sheet-btns { display:flex; flex-direction:column; gap:0.6rem; }
+.sheet-cancel { font-size:13px; color:var(--text3); background:none; border:none; cursor:pointer; text-align:center; padding:0.5rem; font-family:'Fira Code',monospace; width:100%; margin-top:0.25rem; }
+.duration-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:0.75rem 0; }
+.dur-btn { padding:0.6rem 0; font-size:13px; font-weight:600; text-align:center; border:1.5px solid var(--border); border-radius:var(--r-md); background:var(--bg2); color:var(--text2); cursor:pointer; font-family:'Fira Code',monospace; }
+.dur-btn.selected { border-color:var(--isu); background:var(--isu-light); color:var(--isu); }
+.toast { padding:0.6rem 1rem; font-size:12px; font-weight:500; min-height:36px; display:flex; align-items:center; gap:6px; border-bottom:0.5px solid var(--border); }
+.toast.ok    { background:var(--green-bg); color:var(--green); }
+.toast.late  { background:var(--amber-bg); color:var(--amber); }
+.toast.empty { background:var(--bg2); color:var(--text3); font-weight:400; }
+.blind-bar { padding:0.8rem 1rem; display:flex; align-items:center; justify-content:space-between; border-bottom:0.5px solid var(--border); background:var(--bg2); }
+.blind-count { font-size:22px; font-weight:600; color:var(--green); font-family:'Fira Code',monospace; }
+.blind-label { font-size:11px; color:var(--text3); }
+.settings-row { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; border-bottom:0.5px solid var(--border); gap:12px; }
+.settings-label { font-size:12px; color:var(--text2); white-space:nowrap; }
+.settings-val { font-size:12px; font-weight:600; color:var(--amber); min-width:70px; text-align:right; white-space:nowrap; }
+input[type=range] { flex:1; accent-color:var(--isu); }
+.live-badge { display:flex; align-items:center; gap:5px; font-size:11px; font-weight:600; color:#fff; }
+.live-dot { width:7px; height:7px; border-radius:50%; background:#fff; animation:pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+.summary-row { display:flex; align-items:center; justify-content:space-between; padding:0.65rem 1rem; border-bottom:0.5px solid var(--border); }
+.summary-row:last-child { border-bottom:none; }
+.history-session { padding:0.85rem 1rem; border-bottom:0.5px solid var(--border); }
+.history-session:last-child { border-bottom:none; }
+.history-date { font-size:13px; font-weight:600; color:var(--text); margin-bottom:3px; }
+.history-meta { font-size:11px; color:var(--text2); margin-bottom:7px; }
+.history-pills { display:flex; flex-wrap:wrap; gap:5px; }
+.history-pill { font-size:10px; padding:2px 9px; border-radius:20px; border:0.5px solid var(--border); }
+.history-pill.present { background:var(--green-bg); color:var(--green); border-color:var(--green-br); }
+.history-pill.late    { background:var(--amber-bg); color:var(--amber); border-color:var(--amber-br); }
+.history-pill.absent  { background:var(--bg2); color:var(--text3); }
+.report-row { display:flex; align-items:center; justify-content:space-between; padding:0.7rem 1rem; border-bottom:0.5px solid var(--border); }
+.report-row:last-child { border-bottom:none; }
+.report-name { font-size:13px; font-weight:500; color:var(--text); }
+.report-pct  { font-size:10px; color:var(--text3); margin-top:2px; }
+.report-stats { display:flex; gap:8px; font-size:11px; font-family:'Fira Code',monospace; }
+.rp{color:var(--green);} .rl{color:var(--amber);} .ra{color:var(--text3);}
+.empty-state { padding:2.5rem 1rem; text-align:center; color:var(--text3); font-size:12px; }
+.note-box { margin:1rem; padding:0.75rem 0.9rem; background:var(--bg2); border-radius:var(--r-md); border:0.5px solid var(--border); font-size:11px; color:var(--text2); line-height:1.6; }
+.footer-pad { padding:1rem; display:flex; flex-direction:column; gap:0.6rem; }
+.spinner { display:inline-block; width:16px; height:16px; border:2px solid var(--border2); border-top-color:var(--isu); border-radius:50%; animation:spin 0.7s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.cam-error { display:flex; flex-direction:column; align-items:center; justify-content:center; height:var(--scan-h); background:#0a0a0a; gap:6px; }
+.cam-error p { font-size:12px; color:rgba(255,255,255,0.45); text-align:center; padding:0 1.5rem; }
+.typing-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.typing-line { font-family:'Fira Code',monospace; font-size:34px; font-weight:600; color:var(--isu); overflow:hidden; white-space:nowrap; width:0; border-right:2.5px solid var(--isu); animation:typeIn 0.7s steps(5,end) 0.2s forwards, cursorBlink 0.8s step-end 0.9s 4, cursorFade 0.1s ease 3.5s forwards; }
+.typing-sub { font-family:'Fira Code',monospace; font-size:11px; color:var(--text3); overflow:hidden; white-space:nowrap; width:0; opacity:0; animation:typeInSub 0.6s steps(28,end) 1.2s forwards; }
+@keyframes typeIn      { from{width:0} to{width:5ch} }
+@keyframes typeInSub   { from{width:0;opacity:1} to{width:28ch;opacity:1} }
+@keyframes cursorBlink { 0%,100%{border-color:var(--isu)} 50%{border-color:transparent} }
+@keyframes cursorFade  { to{border-color:transparent} }
+</style>
+
+<script>
+/* ─── ALL FUNCTIONS IN GLOBAL SCOPE — fixes onclick ─── */
 
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBVFXnOnK9_uCfgLDRrgRfykHVSvcJ0Fe8",
-  authDomain: "mobiletracking-a53ac.firebaseapp.com",
-  projectId: "mobiletracking-a53ac",
-  storageBucket: "mobiletracking-a53ac.firebasestorage.app",
-  messagingSenderId: "235704110221",
-  appId: "1:235704110221:web:2b79cc60e34ee315dc66c4"
+  apiKey:"AIzaSyBVFXnOnK9_uCfgLDRrgRfykHVSvcJ0Fe8",
+  authDomain:"mobiletracking-a53ac.firebaseapp.com",
+  projectId:"mobiletracking-a53ac",
+  storageBucket:"mobiletracking-a53ac.firebasestorage.app",
+  messagingSenderId:"235704110221",
+  appId:"1:235704110221:web:2b79cc60e34ee315dc66c4"
 };
 
 const PROFESSOR_EMAIL    = 'professor@ilstu.edu';
 const PROFESSOR_PASSWORD = 'Redbirds2026';
-const SESSION_SECONDS    = 360;
-// Hardcoded class — IT 391 Section 002
+
 const CLASS = {
-  code:     'IT 391',
-  section:  '002',
-  name:     'Directed Project in Information Technology',
-  type:     'Online',
-  enrolled: 5,
-  capacity: 5,
+  code:'IT 391', section:'002',
+  name:'Directed Project in Information Technology',
+  type:'Online', enrolled:5, capacity:5,
 };
 
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.firestore();
 
-/* ─── State ───────────────────────────────────────────── */
-
 let STUDENTS      = [];
-let phase         = 'login';   // login | class | dashboard | session-start | scanning | summary | history | report
+let phase         = 'login';
 let currentUser   = null;
 let remaining     = 360;
 let sessionSecs   = 360;
@@ -436,10 +216,11 @@ let historyData   = [];
 let reportData    = [];
 let birdInterval  = null;
 let lateThreshold = 120;
-let scanMode      = 'camera';  // 'camera' | 'manual'
-let sheetStudent  = null;      // student being marked via sheet
+let scanMode      = 'camera';
+let sheetStudent  = null;
+let overrideTarget = null;
 
-/* ─── Auth ────────────────────────────────────────────── */
+/* ─── Auth ─────────────────────────────────────────────── */
 
 async function login() {
   const email = document.getElementById('email').value.trim();
@@ -451,14 +232,11 @@ async function login() {
   btn.disabled = true;
   await new Promise(r => setTimeout(r, 700));
   if (email === PROFESSOR_EMAIL && pass === PROFESSOR_PASSWORD) {
-    currentUser = { email };
-    phase = 'class';
-    fetchStudents();
+    currentUser = { email }; phase = 'class'; fetchStudents();
   } else {
     errEl.textContent = 'Incorrect email or password.';
     errEl.classList.add('show');
-    btn.innerHTML = 'Sign in';
-    btn.disabled = false;
+    btn.innerHTML = 'Sign In'; btn.disabled = false;
   }
 }
 
@@ -467,38 +245,38 @@ function logout() {
   currentUser = null; phase = 'login'; render(); setTimeout(initBird, 0);
 }
 
-/* ─── Students ────────────────────────────────────────── */
-
 async function fetchStudents() {
   try {
     const snap = await db.collection('Students').get();
     STUDENTS = [];
-    snap.forEach(doc => STUDENTS.push({ id: doc.id, name: doc.data().name, barcode: doc.id }));
-render(); setTimeout(initBird, 0);
-  } catch(e) {
-    console.warn('[Firebase] Failed to fetch students:', e.message);
-    render(); setTimeout(initBird, 0);
-  }
+    snap.forEach(doc => STUDENTS.push({ id:doc.id, name:doc.data().name, barcode:doc.id }));
+    if (STUDENTS.length === 0) {
+      STUDENTS = [
+        {id:'A804389465C',name:'Member 1',barcode:'A804389465C'},
+        {id:'A804060073C',name:'Member 2',barcode:'A804060073C'},
+        {id:'STU-100003', name:'Member 3',barcode:'STU-100003'},
+        {id:'STU-100004', name:'Member 4',barcode:'STU-100004'},
+        {id:'STU-100005', name:'Member 5',barcode:'STU-100005'},
+      ];
+    }
+    render();
+  } catch(e) { console.warn('[Firebase] fetchStudents:', e.message); render(); }
 }
 
-/* ─── Session ─────────────────────────────────────────── */
+/* ─── Session ───────────────────────────────────────────── */
 
-function goToSessionStart() {
-  phase = 'session-start';
-  sessionSecs = 360;
-  render();
-}
+function goToSessionStart() { phase = 'session-start'; sessionSecs = 360; render(); }
 
 async function startSession() {
   attendance = {}; remaining = sessionSecs; sessionDocID = null;
   phase = 'scanning'; scanMode = 'camera';
   try {
     const ref = await db.collection('sessions').add({
-      date:          new Date().toLocaleDateString('en-CA'),
-      startedAt:     firebase.firestore.FieldValue.serverTimestamp(),
-      endedAt:       null, attendance: {},
-      professor:     currentUser ? currentUser.email : 'unknown',
-      class:         CLASS.code + ' ' + CLASS.section,
+      date: new Date().toLocaleDateString('en-CA'),
+      startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      endedAt: null, attendance: {},
+      professor: currentUser ? currentUser.email : 'unknown',
+      class: CLASS.code + ' ' + CLASS.section,
       lateThreshold, sessionSecs,
     });
     sessionDocID = ref.id;
@@ -510,7 +288,7 @@ async function startSession() {
     if (remaining <= 0) { clearInterval(timerID); endSession(); }
     else updateTimer();
   }, 1000);
-  if (scanMode === 'camera') requestAnimationFrame(() => startCamera());
+  requestAnimationFrame(() => startCamera());
 }
 
 async function recordScan(barcodeValue) {
@@ -518,90 +296,89 @@ async function recordScan(barcodeValue) {
   if (!student) { showToast('Unknown ID: ' + barcodeValue, 'empty'); return; }
   if (attendance[student.id]) return;
   const scannedAt = new Date();
-  const isLate    = remaining < lateThreshold;
-  attendance[student.id] = { name: student.name, scannedAt, late: isLate, override: false };
+  const isLate = remaining < lateThreshold;
+  attendance[student.id] = { name:student.name, scannedAt, late:isLate, override:false };
   showPrivacyOverlay(student.name, isLate);
   showToast(isLate ? student.name + ' — marked tardy' : student.name + ' checked in', isLate ? 'late' : 'ok');
   updateCountBadge();
   try {
     await db.collection('sessions').doc(sessionDocID).update({
-      ['attendance.' + student.id]: {
-        name: student.name,
-        scannedAt: firebase.firestore.Timestamp.fromDate(scannedAt),
-        late: isLate, override: false,
-      }
+      ['attendance.' + student.id]: { name:student.name, scannedAt:firebase.firestore.Timestamp.fromDate(scannedAt), late:isLate, override:false }
     });
   } catch(e) { console.warn('[Firebase] write:', e.message); }
 }
 
-// Manual mark — called from bottom sheet
 async function markStudent(studentId, asLate) {
   closeSheet();
   const s = STUDENTS.find(s => s.id === studentId);
   if (!s) return;
   const scannedAt = new Date();
-  attendance[studentId] = { name: s.name, scannedAt, late: asLate, override: true };
+  attendance[studentId] = { name:s.name, scannedAt, late:asLate, override:true };
   showToast(asLate ? s.name + ' — marked tardy' : s.name + ' marked present', asLate ? 'late' : 'ok');
-  updateCountBadge();
-  updateManualRoster();
+  updateCountBadge(); updateManualRoster();
   try {
     await db.collection('sessions').doc(sessionDocID).update({
-      ['attendance.' + studentId]: {
-        name: s.name,
-        scannedAt: firebase.firestore.Timestamp.fromDate(scannedAt),
-        late: asLate, override: true,
-      }
+      ['attendance.' + studentId]: { name:s.name, scannedAt:firebase.firestore.Timestamp.fromDate(scannedAt), late:asLate, override:true }
     });
   } catch(e) { console.warn('[Firebase] manual write:', e.message); }
 }
 
-// Summary override — toggle from summary screen
-async function toggleOverride(studentId) {
+async function overrideMarkPresent(studentId) {
   const s = STUDENTS.find(s => s.id === studentId);
   if (!s) return;
-  if (attendance[studentId]) {
-    delete attendance[studentId];
-  } else {
-    attendance[studentId] = { name: s.name, scannedAt: new Date(), late: false, override: true };
-  }
-  renderSummaryRows();
+  attendance[studentId] = { name:s.name, scannedAt:new Date(), late:false, override:true };
+  overrideTarget = null; renderSummaryRows();
   try {
-    const update = {};
-    if (attendance[studentId]) {
-      update['attendance.' + studentId] = {
-        name: s.name,
-        scannedAt: firebase.firestore.Timestamp.fromDate(attendance[studentId].scannedAt),
-        late: false, override: true,
-      };
-    } else {
-      update['attendance.' + studentId] = firebase.firestore.FieldValue.delete();
-    }
-    await db.collection('sessions').doc(sessionDocID).update(update);
+    await db.collection('sessions').doc(sessionDocID).update({
+      ['attendance.' + studentId]: { name:s.name, scannedAt:firebase.firestore.Timestamp.fromDate(attendance[studentId].scannedAt), late:false, override:true }
+    });
   } catch(e) { console.warn('[Firebase] override:', e.message); }
+}
+
+async function overrideMarkTardy(studentId) {
+  const s = STUDENTS.find(s => s.id === studentId);
+  if (!s) return;
+  attendance[studentId] = { name:s.name, scannedAt:new Date(), late:true, override:true };
+  overrideTarget = null; renderSummaryRows();
+  try {
+    await db.collection('sessions').doc(sessionDocID).update({
+      ['attendance.' + studentId]: { name:s.name, scannedAt:firebase.firestore.Timestamp.fromDate(attendance[studentId].scannedAt), late:true, override:true }
+    });
+  } catch(e) { console.warn('[Firebase] override:', e.message); }
+}
+
+async function overrideMarkAbsent(studentId) {
+  delete attendance[studentId]; overrideTarget = null; renderSummaryRows();
+  try {
+    await db.collection('sessions').doc(sessionDocID).update({
+      ['attendance.' + studentId]: firebase.firestore.FieldValue.delete()
+    });
+  } catch(e) { console.warn('[Firebase] override:', e.message); }
+}
+
+function toggleOverride(studentId) {
+  overrideTarget = (overrideTarget === studentId ? null : studentId);
+  renderSummaryRows();
 }
 
 async function endSession() {
   stopCamera(); phase = 'summary';
   try {
-    await db.collection('sessions').doc(sessionDocID).update({
-      endedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    });
+    await db.collection('sessions').doc(sessionDocID).update({ endedAt:firebase.firestore.FieldValue.serverTimestamp() });
   } catch(e) { console.warn('[Firebase] close:', e.message); }
   render();
 }
 
 function resetApp() {
-  phase = 'dashboard'; attendance = {}; remaining = 360; sessionDocID = null;
+  phase = 'dashboard'; attendance = {}; remaining = 360; sessionDocID = null; overrideTarget = null;
   render();
 }
-
-/* ─── History & report ────────────────────────────────── */
 
 async function showHistory() {
   phase = 'history'; historyData = []; render();
   try {
     const snap = await db.collection('sessions').orderBy('startedAt','desc').limit(10).get();
-    historyData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    historyData = snap.docs.map(d => ({ id:d.id, ...d.data() }));
   } catch(e) { console.warn('[Firebase] history:', e.message); }
   render();
 }
@@ -613,42 +390,37 @@ async function showReport() {
     const sessions = snap.docs.map(d => d.data());
     const total = sessions.length;
     reportData = STUDENTS.map(s => {
-      let present = 0, late = 0;
-      sessions.forEach(sess => {
-        const rec = (sess.attendance || {})[s.id];
-        if (rec) { rec.late ? late++ : present++; }
-      });
-      return { name: s.name, present, late, absent: total - present - late,
-               rate: total > 0 ? Math.round(((present+late)/total)*100) : 0, total };
+      let present=0, late=0;
+      sessions.forEach(sess => { const r=(sess.attendance||{})[s.id]; if(r){r.late?late++:present++;} });
+      return { name:s.name, present, late, absent:total-present-late, rate:total>0?Math.round(((present+late)/total)*100):0, total };
     });
   } catch(e) { console.warn('[Firebase] report:', e.message); }
   render();
 }
 
-/* ─── Camera ──────────────────────────────────────────── */
+/* ─── Camera ─────────────────────────────────────────────── */
 
 function startCamera() {
   if (cameraRunning) return;
   const wrap = document.getElementById('camera-wrap');
   if (!wrap) return;
   Quagga.init({
-    inputStream: { type:'LiveStream', target:wrap, constraints:{ facingMode:'environment', width:{ideal:640}, height:{ideal:320} } },
-    decoder: { readers:['code_128_reader','code_39_reader','code_93_reader','ean_reader','ean_8_reader','upc_reader','upc_e_reader','codabar_reader','i2of5_reader'], debug:{showCanvas:false,drawBoundingBox:false,showFrequency:false} },
+    inputStream:{ type:'LiveStream', target:wrap, constraints:{ facingMode:'environment', width:{ideal:640}, height:{ideal:320} } },
+    decoder:{ readers:['code_128_reader','code_39_reader','code_93_reader','ean_reader','ean_8_reader','upc_reader','upc_e_reader','codabar_reader','i2of5_reader'], debug:{showCanvas:false,drawBoundingBox:false,showFrequency:false} },
     locate:true, frequency:8,
   }, err => {
     if (err) {
-      const w = document.getElementById('camera-wrap');
-      if (w) w.innerHTML = '<div class="cam-error"><p>Camera access denied.</p><p>Allow camera in Safari settings.</p></div>';
+      const w=document.getElementById('camera-wrap');
+      if(w) w.innerHTML='<div class="cam-error"><p>Camera access denied.</p><p>Allow camera in Safari settings.</p></div>';
       return;
     }
-    Quagga.start(); cameraRunning = true;
+    Quagga.start(); cameraRunning=true;
   });
   let lastVal=null, lastTime=0;
   Quagga.onDetected(result => {
     const val=result.codeResult.code, now=Date.now();
-    if (val===lastVal && now-lastTime<1500) return;
+    if(val===lastVal && now-lastTime<1500) return;
     lastVal=val; lastTime=now;
-    console.log('[Scan]', val, result.codeResult.format);
     recordScan(val);
   });
 }
@@ -656,548 +428,368 @@ function startCamera() {
 function stopCamera() {
   if (!cameraRunning) return;
   try { Quagga.stop(); } catch(e) {}
-  cameraRunning = false;
+  cameraRunning=false;
 }
 
-/* ─── Sheet (manual mark popup) ──────────────────────── */
+/* ─── Sheet ───────────────────────────────────────────────── */
 
 function openSheet(studentId) {
-  if (attendance[studentId]) return; // already checked in
+  if (attendance[studentId]) return;
   sheetStudent = STUDENTS.find(s => s.id === studentId);
   if (!sheetStudent) return;
-  const existing = document.getElementById('mark-sheet');
-  if (existing) existing.remove();
+  const old = document.getElementById('mark-sheet');
+  if (old) old.remove();
   const el = document.createElement('div');
-  el.id = 'mark-sheet';
-  el.className = 'sheet-overlay';
-  el.innerHTML = `
-    <div class="sheet">
-      <div class="sheet-handle"></div>
-      <div class="sheet-name">${sheetStudent.name}</div>
-      <div class="sheet-sub">Select attendance status</div>
-      <div class="sheet-btns">
-        <button class="btn green" onclick="markStudent('${studentId}', false)">✓ Mark Present</button>
-        <button class="btn amber-btn" onclick="markStudent('${studentId}', true)">⏱ Mark Tardy</button>
-      </div>
-      <button class="sheet-cancel" onclick="closeSheet()">Cancel</button>
-    </div>`;
-  el.addEventListener('click', e => { if (e.target === el) closeSheet(); });
+  el.id = 'mark-sheet'; el.className = 'sheet-overlay';
+  el.innerHTML = `<div class="sheet"><div class="sheet-handle"></div><div class="sheet-name">${sheetStudent.name}</div><div class="sheet-sub">Select attendance status</div><div class="sheet-btns"><button class="btn green" onclick="markStudent('${studentId}',false)">&#10003; Mark Present</button><button class="btn amber-btn" onclick="markStudent('${studentId}',true)">&#9203; Mark Tardy</button></div><button class="sheet-cancel" onclick="closeSheet()">Cancel</button></div>`;
+  el.addEventListener('click', e => { if(e.target===el) closeSheet(); });
   document.body.appendChild(el);
 }
 
 function closeSheet() {
   const el = document.getElementById('mark-sheet');
-  if (el) el.remove();
-  sheetStudent = null;
+  if (el) el.remove(); sheetStudent = null;
 }
 
-/* ─── Helpers ─────────────────────────────────────────── */
+/* ─── Helpers ─────────────────────────────────────────────── */
 
 function fmt(s) { return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
 function fmtTime(d) {
   if (!d) return '';
   const date = d instanceof Date ? d : (d.toDate ? d.toDate() : new Date(d));
-  return date.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  return date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 }
-function fmtMins(s) { return s >= 60 ? Math.round(s/60) + ' min' : s + 's'; }
+function fmtMins(s) { return s>=60 ? Math.round(s/60)+' min' : s+'s'; }
 function presentCount() { return Object.values(attendance).filter(a=>!a.late).length; }
 function lateCount()    { return Object.values(attendance).filter(a=> a.late).length; }
-function totalIn()      { return presentCount() + lateCount(); }
+function totalIn()      { return Object.keys(attendance).length; }
 function absentCount()  { return STUDENTS.length - totalIn(); }
 
 function updateTimer() {
-  const el = document.getElementById('timer');
-  if (el) { el.textContent = fmt(remaining); el.className = 'isu-timer-display' + (remaining<=60?' urgent':''); }
+  const el=document.getElementById('timer');
+  if(el){el.textContent=fmt(remaining);el.className='isu-timer'+(remaining<=60?' urgent':'');}
 }
 
 function updateCountBadge() {
-  const c = document.getElementById('scan-count');
-  if (c) c.textContent = totalIn() + ' / ' + STUDENTS.length;
-  const bc = document.getElementById('blind-count');
-  if (bc) bc.textContent = totalIn();
+  const c=document.getElementById('scan-count');
+  if(c) c.textContent=totalIn()+' / '+STUDENTS.length;
+  const b=document.getElementById('blind-count');
+  if(b) b.textContent=totalIn();
 }
 
 function showToast(msg, type='ok') {
-  const el = document.getElementById('scan-toast');
-  if (!el) return;
-  el.className = 'toast ' + type;
-  el.innerHTML = type==='ok' ? '✓ '+msg : type==='late' ? '⏱ '+msg : msg;
+  const el=document.getElementById('scan-toast');
+  if(!el) return;
+  el.className='toast '+type;
+  el.innerHTML=type==='ok'?'&#10003; '+msg:type==='late'?'&#9203; '+msg:msg;
   clearTimeout(lastToastTO);
-  lastToastTO = setTimeout(() => {
-    const e2 = document.getElementById('scan-toast');
-    if (e2) { e2.className='toast empty'; e2.textContent='Hold barcode in frame to scan'; }
-  }, 2500);
+  lastToastTO=setTimeout(()=>{
+    const e2=document.getElementById('scan-toast');
+    if(e2){e2.className='toast empty';e2.textContent='Hold barcode in frame to scan';}
+  },2500);
 }
 
 function showPrivacyOverlay(name, isLate) {
-  const wrap = document.getElementById('camera-wrap');
-  if (!wrap) return;
-  const old = wrap.querySelector('.privacy-overlay');
-  if (old) old.remove();
-  const el = document.createElement('div');
-  el.className = 'privacy-overlay';
-  el.innerHTML = `<div class="check-icon">${isLate?'⏱':'✓'}</div><div class="priv-name">${name}</div><div class="priv-sub">${isLate?'Marked tardy':'Checked in'}</div>`;
+  const wrap=document.getElementById('camera-wrap');
+  if(!wrap) return;
+  const old=wrap.querySelector('.privacy-overlay');
+  if(old) old.remove();
+  const el=document.createElement('div');
+  el.className='privacy-overlay';
+  el.innerHTML=`<div class="p-icon">${isLate?'&#9203;':'&#10003;'}</div><div class="p-name">${name}</div><div class="p-sub">${isLate?'Marked tardy':'Checked in'}</div>`;
   wrap.appendChild(el);
-  setTimeout(() => el.remove(), 2800);
+  setTimeout(()=>el.remove(), 2800);
 }
 
 function updateThreshold(val) {
-  lateThreshold = parseInt(val);
-  const el = document.getElementById('threshold-label');
-  if (el) el.textContent = 'Last ' + fmtMins(lateThreshold) + ' = tardy';
+  lateThreshold=parseInt(val);
+  const el=document.getElementById('threshold-label');
+  if(el) el.textContent='Last '+fmtMins(lateThreshold)+' = tardy';
 }
 
 function setDuration(secs) {
-  sessionSecs = secs;
-  document.querySelectorAll('.dur-btn').forEach(b => {
-    b.classList.toggle('selected', parseInt(b.dataset.secs) === secs);
-  });
+  sessionSecs=secs;
+  document.querySelectorAll('.dur-btn').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.secs)===secs));
+  const n=document.getElementById('dur-note');
+  if(n) n.textContent=fmtMins(secs);
 }
 
 function switchScanMode(mode) {
-  scanMode = mode;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.mode===mode));
-  const camWrap = document.getElementById('camera-wrap');
-  const manualWrap = document.getElementById('manual-wrap');
-  if (camWrap)    camWrap.style.display    = mode==='camera' ? 'block' : 'none';
-  if (manualWrap) manualWrap.style.display = mode==='manual' ? 'block' : 'none';
-  if (mode==='camera') { requestAnimationFrame(()=>startCamera()); }
-  else                 { stopCamera(); updateManualRoster(); }
+  scanMode=mode;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+  const cw=document.getElementById('camera-wrap');
+  const mw=document.getElementById('manual-wrap');
+  if(cw) cw.style.display=mode==='camera'?'block':'none';
+  if(mw) mw.style.display=mode==='manual'?'block':'none';
+  if(mode==='camera') requestAnimationFrame(()=>startCamera());
+  else { stopCamera(); updateManualRoster(); }
 }
 
 function updateManualRoster() {
-  const container = document.getElementById('manual-list');
-  if (!container) return;
-  container.innerHTML = STUDENTS.map(s => manualRowHTML(s)).join('');
+  const c=document.getElementById('manual-list');
+  if(c) c.innerHTML=STUDENTS.map(s=>manualRowHTML(s)).join('');
 }
 
 function manualRowHTML(s) {
-  const a = attendance[s.id];
-  const checkedIn = !!a;
-  const isLate = a && a.late;
-  const pill = checkedIn
-    ? `<span class="status-pill ${isLate?'late':'present'}">${isLate?'Tardy':'Present'}</span>`
-    : `<span class="status-pill absent">Absent</span>`;
-  return `
-    <div class="student-row${checkedIn?'':' tappable'}" onclick="${checkedIn?'':'openSheet(\''+s.id+'\')'}">
-      <div class="avatar${isLate?' late':checkedIn?' present':''}">${s.name.charAt(0)}</div>
-      <div class="student-info">
-        <div class="student-name">${s.name}</div>
-        <div class="student-id">${s.barcode}</div>
-      </div>
-      ${pill}
-    </div>`;
+  const a=attendance[s.id];
+  const checkedIn=!!a, isLate=a&&a.late;
+  const pill=checkedIn?`<span class="status-pill ${isLate?'late':'present'}">${isLate?'Tardy':'Present'}</span>`:`<span class="status-pill absent">Absent</span>`;
+  return `<div class="student-row${checkedIn?'':' tappable'}" onclick="${checkedIn?'':'openSheet(\''+s.id+'\')'}">
+    <div class="avatar${isLate?' late':checkedIn?' present':''}">${s.name.charAt(0)}</div>
+    <div class="student-info"><div class="student-name">${s.name}</div><div class="student-id">${s.barcode}</div></div>
+    ${pill}</div>`;
 }
 
-/* ─── Summary rows ────────────────────────────────────── */
-
 function renderSummaryRows() {
-  const container = document.getElementById('summary-roster');
-  if (!container) return;
-  container.innerHTML = STUDENTS.map(s => summaryRowHTML(s)).join('');
-  const pc = presentCount(), lc = lateCount(), ac = absentCount();
-  const nums = document.querySelectorAll('.summary-stat-num');
-  if (nums[0]) nums[0].textContent = pc;
-  if (nums[1]) nums[1].textContent = lc;
-  if (nums[2]) nums[2].textContent = ac;
+  const c=document.getElementById('summary-roster');
+  if(c) c.innerHTML=STUDENTS.map(s=>summaryRowHTML(s)).join('');
+  const nums=document.querySelectorAll('.sum-num');
+  if(nums[0]) nums[0].textContent=presentCount();
+  if(nums[1]) nums[1].textContent=lateCount();
+  if(nums[2]) nums[2].textContent=absentCount();
 }
 
 function summaryRowHTML(s) {
-  const a = attendance[s.id];
+  const a=attendance[s.id];
   const present=!!a&&!a.late, late=!!a&&a.late, absent=!a;
-  const pillClass = present ? 'present' : late ? 'late' : 'absent';
-  const pillText  = present ? (a.override?'Override':'Present') : late ? 'Tardy' : 'Absent';
-  const time = a ? fmtTime(a.scannedAt) : '';
-  return `
-  <div class="student-row tappable" onclick="toggleOverride('${s.id}')"
-       style="background:${present?'var(--green-bg)':late?'var(--amber-bg)':''}">
-    <div class="avatar ${pillClass.replace('absent','')}">${s.name.charAt(0)}</div>
-    <div class="student-info">
-      <div class="student-name">${s.name}</div>
-      <div class="student-id">${time ? 'Scanned ' + time : 'Tap to toggle'}</div>
+  const color=present?'var(--green)':late?'var(--amber)':'var(--text2)';
+  const pillClass=present?'present':late?'late':'absent';
+  const pillText=present?(a.override?'Override':'Present'):late?(a.override?'Override':'Tardy'):'Absent';
+  const time=a?fmtTime(a.scannedAt):'';
+  let menuHTML='';
+  if(overrideTarget===s.id) {
+    menuHTML=absent?`<div style="display:flex;gap:6px;margin-top:6px;" onclick="event.stopPropagation()"><button class="btn sm" onclick="overrideMarkPresent('${s.id}')" style="border-color:var(--green);color:var(--green);">Present</button><button class="btn sm" onclick="overrideMarkTardy('${s.id}')" style="border-color:var(--amber);color:var(--amber);">Tardy</button><button class="btn sm" onclick="toggleOverride('${s.id}')">Cancel</button></div>`
+    :`<div style="display:flex;gap:6px;margin-top:6px;" onclick="event.stopPropagation()"><button class="btn sm" onclick="overrideMarkAbsent('${s.id}')" style="border-color:var(--red);color:var(--red);">Mark Absent</button><button class="btn sm" onclick="toggleOverride('${s.id}')">Cancel</button></div>`;
+  }
+  return `<div class="summary-row tappable" onclick="toggleOverride('${s.id}')" style="background:${present?'var(--green-bg)':late?'var(--amber-bg)':''}">
+    <div style="display:flex;flex-direction:column;flex:1;gap:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="avatar ${present?'present':late?'late':''}">${s.name.charAt(0)}</div>
+          <div><div class="student-name" style="color:${color}">${s.name}</div><div class="student-id">${time?'Scanned '+time:'Tap to modify'}</div></div>
+        </div>
+        <span class="status-pill ${pillClass}${a&&a.override?' override':''}">${pillText}</span>
+      </div>
+      ${menuHTML}
     </div>
-    <span class="status-pill ${pillClass}${a&&a.override?' override':''}">${pillText}</span>
   </div>`;
 }
 
-/* ─── RENDER ──────────────────────────────────────────── */
+/* ─── RENDER ──────────────────────────────────────────────── */
 
 function render() {
-  const app = document.getElementById('app');
-  const today = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  const app=document.getElementById('app');
+  const today=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 
-  /* ═══ LOGIN ════════════════════════════════════════════ */
-  if (phase === 'login') {
-    app.innerHTML = `
+  if(phase==='login') {
+    app.innerHTML=`
       <div class="isu-header" style="justify-content:center;">
-        <div style="text-align:center;">
-          <div class="isu-header-title">FlyBy</div>
-          <div class="isu-header-sub">Illinois State University</div>
-        </div>
+        <div style="text-align:center;"><div class="isu-header-title">FlyBy</div><div class="isu-header-sub">Illinois State University</div></div>
       </div>
       <div class="login-wrap">
         <div class="login-logo">
           <canvas id="redbird" width="80" height="80" style="image-rendering:pixelated;width:80px;height:80px;"></canvas>
-          <div class="typing-wrap">
-            <div class="typing-line">FlyBy</div>
-            <div class="typing-sub">IT391 · Professor sign-in</div>
-          </div>
+          <div class="typing-wrap"><div class="typing-line">FlyBy</div><div class="typing-sub">IT391 &middot; Professor sign-in</div></div>
         </div>
-        <div class="input-group">
-          <div class="input-label">Email</div>
-          <input id="email" class="input-field" type="email" placeholder="professor@ilstu.edu" autocomplete="email">
-        </div>
-        <div class="input-group">
-          <div class="input-label">Password</div>
-          <input id="pass" class="input-field" type="password" placeholder="••••••••" autocomplete="current-password">
-        </div>
+        <div class="input-group"><div class="input-label">Email</div><input id="email" class="input-field" type="email" placeholder="professor@ilstu.edu" autocomplete="email"></div>
+        <div class="input-group"><div class="input-label">Password</div><input id="pass" class="input-field" type="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password"></div>
         <div id="login-err" class="login-error"></div>
         <button id="login-btn" class="btn primary" onclick="login()">Sign In</button>
-        <p style="font-size:11px;color:var(--text3);text-align:center;line-height:1.5;">Professor Portal · Illinois State University</p>
+        <p style="font-size:11px;color:var(--text3);text-align:center;">Professor Portal &middot; Illinois State University</p>
       </div>`;
-    setTimeout(initBird, 0);
-    document.getElementById('pass').addEventListener('keydown', e => { if(e.key==='Enter') login(); });
+    setTimeout(initBird,0);
+    document.getElementById('pass').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
     return;
   }
 
-  /* ═══ CLASS SELECTION ══════════════════════════════════ */
-  if (phase === 'class') {
-    app.innerHTML = `
+  if(phase==='class') {
+    app.innerHTML=`
       <div class="isu-header">
-        <div>
-          <div class="isu-header-title">Select Your Class</div>
-          <div class="isu-header-sub">${currentUser ? currentUser.email : ''}</div>
-        </div>
+        <div><div class="isu-header-title">Select Your Class</div><div class="isu-header-sub">${currentUser?currentUser.email:''}</div></div>
         <button class="isu-back-btn" onclick="logout()">Sign Out</button>
       </div>
-      <div class="content">
-        <div style="padding:0.75rem 0.85rem 0;font-size:11px;color:var(--text3);">
-          ${today}
+      <div style="padding:0.75rem 0.85rem 0;font-size:11px;color:var(--text3);">${today}</div>
+      <div class="class-card" onclick="phase='dashboard';render()">
+        <div class="class-card-header">
+          <div class="class-code">${CLASS.code}</div>
+          <div class="class-section-badge">Section ${CLASS.section}</div>
         </div>
-        <div class="class-card" onclick="phase='dashboard';render()">
-          <div class="class-card-header">
-            <div class="class-code">${CLASS.code}</div>
-            <div class="class-section-badge">Section ${CLASS.section}</div>
-          </div>
-          <div class="class-name">${CLASS.name}</div>
-          <div class="class-meta">
-            <div class="class-meta-row">
-              <span style="color:var(--text3)">&#9679;</span>
-              <span>${CLASS.type}</span>
-            </div>
-          </div>
-          <div class="class-footer">
-            <div class="class-enrolled">${CLASS.enrolled} / ${CLASS.capacity} students enrolled</div>
-            <button class="class-view-btn">View Details &rsaquo;</button>
-          </div>
+        <div class="class-name">${CLASS.name}</div>
+        <div style="font-size:11px;color:var(--text3);">${CLASS.type}</div>
+        <div class="class-footer">
+          <div class="class-enrolled">${CLASS.enrolled} / ${CLASS.capacity} students enrolled</div>
+          <button class="class-view-btn">View Details &rsaquo;</button>
         </div>
-        <div style="padding:1.5rem 1rem;text-align:center;color:var(--text3);font-size:11px;">
-          Showing classes assigned to your account
-        </div>
-      </div>`;
+      </div>
+      <div style="padding:1rem;text-align:center;font-size:11px;color:var(--text3);">Showing classes assigned to your account</div>`;
     return;
   }
 
-  /* ═══ DASHBOARD ════════════════════════════════════════ */
-  if (phase === 'dashboard') {
-    const recentSession = historyData[0];
-    app.innerHTML = `
+  if(phase==='dashboard') {
+    app.innerHTML=`
       <div class="isu-header">
-        <div>
-          <div class="isu-header-title">${CLASS.code} · Section ${CLASS.section}</div>
-          <div class="isu-header-sub">${CLASS.name}</div>
-        </div>
+        <div><div class="isu-header-title">${CLASS.code} &middot; Section ${CLASS.section}</div><div class="isu-header-sub">${CLASS.name}</div></div>
         <button class="isu-back-btn" onclick="phase='class';render()">&#8592;</button>
       </div>
-      <div class="content">
-        <div class="stat-row">
-          <div class="stat-card">
-            <div class="stat-num green">${CLASS.enrolled}</div>
-            <div class="stat-lbl">Enrolled</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-num gray">${historyData.length || 0}</div>
-            <div class="stat-lbl">Sessions</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-num amber">—</div>
-            <div class="stat-lbl">Avg Rate</div>
-          </div>
-        </div>
-
-        <div class="section-label">
-          <span>Roster</span>
-          <span style="color:var(--text2);font-size:10px;">${CLASS.enrolled} students</span>
-        </div>
-
-        ${STUDENTS.length === 0
-          ? '<div class="empty-state">Loading students...</div>'
-          : STUDENTS.map((s, i) => `
-            <div class="student-row">
-              <div class="avatar">${s.name.charAt(0)}</div>
-              <div class="student-info">
-                <div class="student-name">${s.name}</div>
-                <div class="student-id">${s.barcode}</div>
-              </div>
-              <span class="status-pill absent">—</span>
-            </div>`).join('')}
-
-        <div class="footer-pad">
-          <button class="btn primary" onclick="goToSessionStart()">+ Start New Session</button>
-          <button class="btn secondary" onclick="showHistory()">View History</button>
-          <button class="btn secondary" onclick="showReport()">Semester Report</button>
-          <button class="btn danger" onclick="logout()">Sign Out</button>
-        </div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="stat-num green">${CLASS.enrolled}</div><div class="stat-lbl">Enrolled</div></div>
+        <div class="stat-card"><div class="stat-num gray">${historyData.length||0}</div><div class="stat-lbl">Sessions</div></div>
+        <div class="stat-card"><div class="stat-num amber">&#8212;</div><div class="stat-lbl">Avg Rate</div></div>
+      </div>
+      <div class="section-label"><span>Roster</span><span>${CLASS.enrolled} students</span></div>
+      ${STUDENTS.length===0?'<div class="empty-state">Loading...</div>':STUDENTS.map(s=>`
+        <div class="student-row">
+          <div class="avatar">${s.name.charAt(0)}</div>
+          <div class="student-info"><div class="student-name">${s.name}</div><div class="student-id">${s.barcode}</div></div>
+          <span class="status-pill absent">&#8212;</span>
+        </div>`).join('')}
+      <div class="footer-pad">
+        <button class="btn primary" onclick="goToSessionStart()">+ Start New Session</button>
+        <button class="btn secondary" onclick="showHistory()">View History</button>
+        <button class="btn secondary" onclick="showReport()">Semester Report</button>
+        <button class="btn danger" onclick="logout()">Sign Out</button>
       </div>`;
     return;
   }
 
-  /* ═══ SESSION START ════════════════════════════════════ */
-  if (phase === 'session-start') {
-    app.innerHTML = `
+  if(phase==='session-start') {
+    app.innerHTML=`
       <div class="isu-header">
-        <div>
-          <div class="isu-header-title">New Session</div>
-          <div class="isu-header-sub">${CLASS.code} · ${CLASS.section} · ${today}</div>
-        </div>
+        <div><div class="isu-header-title">New Session</div><div class="isu-header-sub">${CLASS.code} &middot; ${CLASS.section} &middot; ${today}</div></div>
         <button class="isu-back-btn" onclick="phase='dashboard';render()">Cancel</button>
       </div>
-      <div class="content" style="padding:1rem;">
-
+      <div style="padding:1rem;">
         <div style="font-size:11px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin-bottom:.5rem;">Session Duration</div>
         <div class="duration-grid">
-          <button class="dur-btn" data-secs="300"  onclick="setDuration(300)"> 5 min</button>
-          <button class="dur-btn selected" data-secs="360" onclick="setDuration(360)"> 6 min</button>
-          <button class="dur-btn" data-secs="600"  onclick="setDuration(600)">10 min</button>
-          <button class="dur-btn" data-secs="900"  onclick="setDuration(900)">15 min</button>
+          <button class="dur-btn" data-secs="300" onclick="setDuration(300)">5 min</button>
+          <button class="dur-btn selected" data-secs="360" onclick="setDuration(360)">6 min</button>
+          <button class="dur-btn" data-secs="600" onclick="setDuration(600)">10 min</button>
+          <button class="dur-btn" data-secs="900" onclick="setDuration(900)">15 min</button>
           <button class="dur-btn" data-secs="1800" onclick="setDuration(1800)">30 min</button>
           <button class="dur-btn" data-secs="2700" onclick="setDuration(2700)">45 min</button>
         </div>
-
         <div style="font-size:11px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin:1rem 0 .5rem;">Tardy Threshold</div>
-        <div class="settings-row" style="margin:0;border:1.5px solid var(--border);border-radius:var(--r-md);padding:.75rem 1rem;">
+        <div class="settings-row" style="margin:0;border:1.5px solid var(--border);border-radius:var(--r-md);">
           <span class="settings-label">Mark tardy if in last</span>
           <input type="range" min="30" max="300" step="30" value="${lateThreshold}" oninput="updateThreshold(this.value)">
           <span class="settings-val" id="threshold-label">Last ${fmtMins(lateThreshold)} = tardy</span>
         </div>
-
         <div class="note-box" style="margin:1rem 0 0;">
-          Session will scan open for <strong id="dur-note">${fmtMins(sessionSecs)}</strong> then automatically end.
-          Students scanned in the final <strong>${fmtMins(lateThreshold)}</strong> will be marked tardy.
+          Session open for <strong id="dur-note">${fmtMins(sessionSecs)}</strong>.
+          Students scanned in the final <strong>${fmtMins(lateThreshold)}</strong> marked tardy.
         </div>
       </div>
-      <div class="footer-pad">
-        <button class="btn primary" onclick="startSession()">Start Session &rsaquo;</button>
-      </div>`;
+      <div class="footer-pad"><button class="btn primary" onclick="startSession()">Start Session &rsaquo;</button></div>`;
     return;
   }
 
-  /* ═══ SCANNING ═════════════════════════════════════════ */
-  if (phase === 'scanning') {
-    app.innerHTML = `
+  if(phase==='scanning') {
+    app.innerHTML=`
       <div class="isu-header">
-        <div>
-          <div class="live-badge"><div class="live-dot"></div>Live</div>
-          <div style="font-size:11px;opacity:.8;margin-top:2px;">${CLASS.code} · ${CLASS.section}</div>
-        </div>
-        <div id="timer" class="isu-timer-display">${fmt(remaining)}</div>
+        <div><div class="live-badge"><div class="live-dot"></div>Live</div><div style="font-size:11px;opacity:.8;margin-top:2px;">${CLASS.code} &middot; ${CLASS.section}</div></div>
+        <div id="timer" class="isu-timer">${fmt(remaining)}</div>
         <div style="text-align:right;">
           <div id="scan-count" style="font-size:13px;font-weight:600;color:#fff;">${totalIn()} / ${STUDENTS.length}</div>
-          <button class="isu-action-btn" onclick="endSession()" style="margin-top:4px;">End</button>
+          <button class="isu-back-btn" onclick="endSession()" style="margin-top:4px;">End</button>
         </div>
       </div>
-
       <div class="tab-bar">
-        <button class="tab-btn active" data-mode="camera" onclick="switchScanMode('camera')">&#x1F4F7; Scan Barcode</button>
-        <button class="tab-btn" data-mode="manual" onclick="switchScanMode('manual')">&#9998; Mark Manually</button>
+        <button class="tab-btn active" data-mode="camera" onclick="switchScanMode('camera')">Scan Barcode</button>
+        <button class="tab-btn" data-mode="manual" onclick="switchScanMode('manual')">Mark Manually</button>
       </div>
-
       <div id="camera-wrap">
         <div class="reticle"><div class="reticle-inner"></div><div class="scanline"></div></div>
         <div class="camera-hint">Hold student ID barcode steady in frame</div>
       </div>
-
       <div id="scan-toast" class="toast empty">Hold barcode in frame to scan</div>
-
       <div id="manual-wrap" style="display:none;">
         <div class="blind-bar">
-          <div>
-            <div class="blind-count" id="blind-count">${totalIn()}</div>
-            <div class="blind-label">checked in</div>
-          </div>
+          <div><div class="blind-count" id="blind-count">${totalIn()}</div><div class="blind-label">checked in</div></div>
           <span style="font-size:11px;color:var(--text3);">Tap a name to mark</span>
         </div>
-        <div id="manual-list">
-          ${STUDENTS.map(s => manualRowHTML(s)).join('')}
-        </div>
+        <div id="manual-list">${STUDENTS.map(s=>manualRowHTML(s)).join('')}</div>
       </div>`;
     return;
   }
 
-  /* ═══ SUMMARY ══════════════════════════════════════════ */
-  if (phase === 'summary') {
+  if(phase==='summary') {
     const pc=presentCount(), lc=lateCount(), ac=absentCount();
-    app.innerHTML = `
+    app.innerHTML=`
       <div class="isu-header">
-        <div>
-          <div class="isu-header-title">Session Complete</div>
-          <div class="isu-header-sub">${CLASS.code} · ${CLASS.section} · ${today}</div>
-        </div>
+        <div><div class="isu-header-title">Session Complete</div><div class="isu-header-sub">${CLASS.code} &middot; ${CLASS.section} &middot; ${today}</div></div>
       </div>
-      <div class="content">
-        <div class="stat-row">
-          <div class="stat-card">
-            <div class="stat-num green summary-stat-num">${pc}</div>
-            <div class="stat-lbl">Present</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-num amber summary-stat-num">${lc}</div>
-            <div class="stat-lbl">Tardy</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-num gray summary-stat-num">${ac}</div>
-            <div class="stat-lbl">Absent</div>
-          </div>
-        </div>
-
-        <div class="section-label">
-          <span>Final Roster</span>
-          <span style="color:var(--blue);font-size:10px;">Tap to override</span>
-        </div>
-
-        <div id="summary-roster">
-          ${STUDENTS.map(s => summaryRowHTML(s)).join('')}
-        </div>
-
-        <div class="note-box">
-          ${sessionDocID
-            ? 'Saved to Firebase &middot; ID: <code style="font-size:10px;">' + sessionDocID + '</code>'
-            : 'Session saved locally.'}
-        </div>
-
-        <div class="footer-pad">
-          <button class="btn primary" onclick="resetApp()">New Session</button>
-          <button class="btn secondary" onclick="showHistory()">View History</button>
-        </div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="stat-num green sum-num">${pc}</div><div class="stat-lbl">Present</div></div>
+        <div class="stat-card"><div class="stat-num amber sum-num">${lc}</div><div class="stat-lbl">Tardy</div></div>
+        <div class="stat-card"><div class="stat-num gray sum-num">${ac}</div><div class="stat-lbl">Absent</div></div>
+      </div>
+      <div class="section-label"><span>Final Roster</span><span style="color:var(--blue);font-size:10px;">Tap to override</span></div>
+      <div id="summary-roster">${STUDENTS.map(s=>summaryRowHTML(s)).join('')}</div>
+      <div class="note-box">${sessionDocID?'Saved to Firebase &middot; ID: <code>'+sessionDocID+'</code>':'Saved locally.'}</div>
+      <div class="footer-pad">
+        <button class="btn primary" onclick="resetApp()">New Session</button>
+        <button class="btn secondary" onclick="showHistory()">View History</button>
       </div>`;
     return;
   }
 
-  /* ═══ HISTORY ══════════════════════════════════════════ */
-  if (phase === 'history') {
-    app.innerHTML = `
+  if(phase==='history') {
+    app.innerHTML=`
       <div class="isu-header">
-        <div>
-          <div class="isu-header-title">Session History</div>
-          <div class="isu-header-sub">${CLASS.code} · ${CLASS.section}</div>
-        </div>
+        <div><div class="isu-header-title">Session History</div><div class="isu-header-sub">${CLASS.code} &middot; ${CLASS.section}</div></div>
         <button class="isu-back-btn" onclick="phase='dashboard';render()">&#8592;</button>
       </div>
-      <div class="content">
-        ${historyData.length === 0
-          ? '<div class="empty-state"><div class="spinner" style="margin:0 auto 8px;border-top-color:var(--isu)"></div>Loading...</div>'
-          : historyData.map(session => {
-              const att = session.attendance || {};
-              const studs = STUDENTS.map(s => {
-                const rec = att[s.id];
-                if (!rec) return { name:s.name, status:'absent', time:null };
-                return { name:s.name, status:rec.late?'late':'present', time:fmtTime(rec.scannedAt) };
-              });
-              const pc2=studs.filter(s=>s.status==='present').length;
-              const lc2=studs.filter(s=>s.status==='late').length;
-              return `<div class="history-session">
-                <div class="history-date">${session.date||'Unknown date'}</div>
-                <div class="history-meta">${session.startedAt?'Started '+fmtTime(session.startedAt)+' &middot; ':''
-                  }${pc2} present &middot; ${lc2} tardy &middot; ${STUDENTS.length-pc2-lc2} absent</div>
-                <div class="history-pills">
-                  ${studs.map(s=>`<span class="history-pill ${s.status}">${s.name}${s.time?' '+s.time:''}${s.status==='late'?' ⏱':''}</span>`).join('')}
-                </div>
-              </div>`;
-            }).join('')}
-      </div>`;
+      ${historyData.length===0?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>':historyData.map(sess=>{
+        const att=sess.attendance||{};
+        const studs=STUDENTS.map(s=>{const r=att[s.id];return r?{name:s.name,status:r.late?'late':'present',time:fmtTime(r.scannedAt)}:{name:s.name,status:'absent',time:null};});
+        const pc2=studs.filter(s=>s.status==='present').length, lc2=studs.filter(s=>s.status==='late').length;
+        return `<div class="history-session"><div class="history-date">${sess.date||'Unknown date'}</div><div class="history-meta">${sess.startedAt?'Started '+fmtTime(sess.startedAt)+' &middot; ':''}${pc2} present &middot; ${lc2} tardy &middot; ${STUDENTS.length-pc2-lc2} absent</div><div class="history-pills">${studs.map(s=>`<span class="history-pill ${s.status}">${s.name}${s.time?' '+s.time:''}${s.status==='late'?' &#9203;':''}</span>`).join('')}</div></div>`;
+      }).join('')}`;
     return;
   }
 
-  /* ═══ SEMESTER REPORT ══════════════════════════════════ */
-  if (phase === 'report') {
-    const total = reportData[0] ? reportData[0].total : 0;
-    app.innerHTML = `
+  if(phase==='report') {
+    const total=reportData[0]?reportData[0].total:0;
+    app.innerHTML=`
       <div class="isu-header">
-        <div>
-          <div class="isu-header-title">Semester Report</div>
-          <div class="isu-header-sub">${total} session${total!==1?'s':''} recorded</div>
-        </div>
+        <div><div class="isu-header-title">Semester Report</div><div class="isu-header-sub">${total} session${total!==1?'s':''} recorded</div></div>
         <button class="isu-back-btn" onclick="phase='dashboard';render()">&#8592;</button>
       </div>
-      <div class="content">
-        ${reportData.length === 0
-          ? '<div class="empty-state"><div class="spinner" style="margin:0 auto 8px;border-top-color:var(--isu)"></div>Calculating...</div>'
-          : `<div class="section-label"><span>Per-student totals</span><span>P &middot; T &middot; A</span></div>
-             ${reportData.sort((a,b)=>b.rate-a.rate).map(s=>`
-               <div class="report-row">
-                 <div>
-                   <div class="report-name">${s.name}</div>
-                   <div class="report-pct">${s.rate}% attendance rate</div>
-                 </div>
-                 <div class="report-stats">
-                   <span class="rp">${s.present}P</span>
-                   <span class="rl">${s.late}T</span>
-                   <span class="ra">${s.absent}A</span>
-                 </div>
-               </div>`).join('')}
-             <div class="note-box">Sorted by rate &middot; P = Present &middot; T = Tardy &middot; A = Absent</div>`}
-      </div>`;
+      ${reportData.length===0?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Calculating...</div>':`
+        <div class="section-label"><span>Per-student totals</span><span>P &middot; T &middot; A</span></div>
+        ${reportData.sort((a,b)=>b.rate-a.rate).map(s=>`<div class="report-row"><div><div class="report-name">${s.name}</div><div class="report-pct">${s.rate}% attendance rate</div></div><div class="report-stats"><span class="rp">${s.present}P</span><span class="rl">${s.late}T</span><span class="ra">${s.absent}A</span></div></div>`).join('')}
+        <div class="note-box">Sorted by rate &middot; P=Present &middot; T=Tardy &middot; A=Absent</div>`}`;
     return;
   }
 }
 
-render();
-
-/* ─── Animated redbird ────────────────────────────────── */
+/* ─── Redbird ─────────────────────────────────────────────── */
 function initBird() {
   clearInterval(birdInterval);
-  const CV = document.getElementById('redbird');
-  if (!CV) return;
-  const cx = CV.getContext('2d');
-  cx.imageSmoothingEnabled = false;
-  const Z = CV.width / 16;
-  const _R='#cc0000',_M='#aa0000',_D='#880000',_X='#550000',_H='#ee3333',
-        _K='#0d0d0d',_Y='#ffcc00',_O='#e07020',_B='#b04800',_W='#8b5e3c',_G='#c45c00';
+  const CV=document.getElementById('redbird');
+  if(!CV) return;
+  const cx=CV.getContext('2d'); cx.imageSmoothingEnabled=false;
+  const Z=CV.width/16;
+  const _R='#cc0000',_M='#aa0000',_D='#880000',_X='#550000',_H='#ee3333',_K='#0d0d0d',_Y='#ffcc00',_O='#e07020',_B='#b04800',_W='#8b5e3c',_G='#c45c00';
   function p(x,y,c){cx.fillStyle=c;cx.fillRect(x*Z,y*Z,Z,Z);}
   function base(){
-    p(9,0,_R);p(8,1,_R);p(9,1,_R);p(7,2,_R);p(8,2,_R);p(9,2,_R);
-    p(7,3,_R);p(8,3,_R);p(9,3,_R);p(10,3,_R);p(8,4,_R);p(9,4,_R);p(10,4,_R);p(11,4,_R);
-    p(7,5,_R);p(8,5,_R);p(9,5,_R);p(10,5,_R);p(11,5,_R);p(12,5,_R);
-    p(9,6,_R);p(10,6,_R);p(13,6,_R);p(14,6,_R);
-    p(9,7,_R);p(10,7,_R);p(11,7,_R);p(12,7,_R);p(13,7,_R);
-    p(9,8,_R);p(10,8,_R);p(11,8,_R);p(12,8,_R);
-    p(4,5,_K);p(5,5,_K);p(6,5,_K);p(7,5,_K);
-    p(4,6,_K);p(5,6,_K);p(6,6,_K);p(7,6,_K);p(8,6,_K);p(9,6,_K);p(10,6,_K);p(11,6,_K);p(12,6,_K);
-    p(4,7,_K);p(5,7,_K);p(6,7,_K);p(7,7,_K);p(8,7,_K);
-    p(5,8,_K);p(6,8,_K);p(7,8,_K);
-    p(11,6,_K);p(12,6,_Y);
-    p(14,6,_O);p(15,6,_O);p(16,6,_O);p(17,6,_O);
-    p(14,7,_O);p(15,7,_O);p(16,7,_O);p(17,7,_O);p(18,7,_O);
-    p(14,8,_B);p(15,8,_B);p(16,8,_B);p(17,8,_B);
-    p(8,8,_R);p(9,8,_R);p(10,8,_R);p(11,8,_R);p(12,8,_R);p(13,8,_R);
-    p(7,9,_R);p(8,9,_R);p(9,9,_R);p(10,9,_R);p(11,9,_R);p(12,9,_R);p(13,9,_R);
+    p(9,0,_R);p(8,1,_R);p(9,1,_R);p(7,2,_R);p(8,2,_R);p(9,2,_R);p(7,3,_R);p(8,3,_R);p(9,3,_R);p(10,3,_R);p(8,4,_R);p(9,4,_R);p(10,4,_R);p(11,4,_R);
+    p(7,5,_R);p(8,5,_R);p(9,5,_R);p(10,5,_R);p(11,5,_R);p(12,5,_R);p(9,6,_R);p(10,6,_R);p(13,6,_R);p(14,6,_R);
+    p(9,7,_R);p(10,7,_R);p(11,7,_R);p(12,7,_R);p(13,7,_R);p(9,8,_R);p(10,8,_R);p(11,8,_R);p(12,8,_R);
+    p(4,5,_K);p(5,5,_K);p(6,5,_K);p(7,5,_K);p(4,6,_K);p(5,6,_K);p(6,6,_K);p(7,6,_K);p(8,6,_K);p(9,6,_K);p(10,6,_K);p(11,6,_K);p(12,6,_K);
+    p(4,7,_K);p(5,7,_K);p(6,7,_K);p(7,7,_K);p(8,7,_K);p(5,8,_K);p(6,8,_K);p(7,8,_K);p(11,6,_K);p(12,6,_Y);
+    p(14,6,_O);p(15,6,_O);p(16,6,_O);p(17,6,_O);p(14,7,_O);p(15,7,_O);p(16,7,_O);p(17,7,_O);p(18,7,_O);p(14,8,_B);p(15,8,_B);p(16,8,_B);p(17,8,_B);
+    p(8,8,_R);p(9,8,_R);p(10,8,_R);p(11,8,_R);p(12,8,_R);p(13,8,_R);p(7,9,_R);p(8,9,_R);p(9,9,_R);p(10,9,_R);p(11,9,_R);p(12,9,_R);p(13,9,_R);
     for(let x=4;x<=13;x++){p(x,10,_R);p(x,11,_R);p(x,12,_R);}
     for(let x=5;x<=13;x++) p(x,13,_R);
     for(let x=5;x<=12;x++) p(x,14,_R);
     for(let x=6;x<=11;x++) p(x,15,_R);
     for(let x=7;x<=10;x++) p(x,16,_R);
-    p(4,10,_M);p(4,11,_M);p(4,12,_M);p(5,13,_M);p(5,14,_M);
-    p(9,10,_H);p(10,10,_H);p(9,11,_H);p(10,11,_H);
-    p(3,11,_M);p(3,12,_M);
-    p(12,13,_D);p(12,14,_D);p(11,14,_D);
-    p(14,10,_M);p(15,10,_M);p(16,10,_D);
-    p(14,11,_D);p(15,11,_D);p(16,11,_X);p(17,11,_X);
-    p(14,12,_D);p(15,12,_X);p(16,12,_X);
-    p(13,13,_D);p(14,13,_X);p(15,13,_X);
-    p(13,14,_X);p(14,14,_X);p(13,15,_X);
+    p(4,10,_M);p(4,11,_M);p(4,12,_M);p(5,13,_M);p(5,14,_M);p(9,10,_H);p(10,10,_H);p(9,11,_H);p(10,11,_H);p(3,11,_M);p(3,12,_M);
+    p(12,13,_D);p(12,14,_D);p(11,14,_D);p(14,10,_M);p(15,10,_M);p(16,10,_D);p(14,11,_D);p(15,11,_D);p(16,11,_X);p(17,11,_X);
+    p(14,12,_D);p(15,12,_X);p(16,12,_X);p(13,13,_D);p(14,13,_X);p(15,13,_X);p(13,14,_X);p(14,14,_X);p(13,15,_X);
     p(7,17,_G);p(7,18,_G);p(7,19,_G);p(9,17,_G);p(9,18,_G);p(9,19,_G);
-    p(5,20,_G);p(6,20,_G);p(7,20,_G);p(8,20,_G);p(9,20,_G);p(10,20,_G);p(11,20,_G);
-    p(4,20,_W);p(12,20,_W);
+    p(5,20,_G);p(6,20,_G);p(7,20,_G);p(8,20,_G);p(9,20,_G);p(10,20,_G);p(11,20,_G);p(4,20,_W);p(12,20,_W);
   }
   const frames=[
     {L:[[3,12],[3,13],[2,12],[2,13]],R:[[12,14],[11,15],[12,15]]},
@@ -1212,15 +804,15 @@ function initBird() {
     {L:[[3,13],[3,14],[2,13],[2,14]],R:[[12,15],[11,15],[12,16]]},
   ];
   let f=0;
-  function draw(){ cx.clearRect(0,0,CV.width,CV.height); base(); for(const [x,y] of frames[f].L) p(x,y,_M); for(const [x,y] of frames[f].R) p(x,y,_D); }
+  function draw(){cx.clearRect(0,0,CV.width,CV.height);base();for(const[x,y]of frames[f].L)p(x,y,_M);for(const[x,y]of frames[f].R)p(x,y,_D);}
   draw();
-  birdInterval = setInterval(()=>{ f=(f+1)%frames.length; draw(); }, 150);
+  birdInterval=setInterval(()=>{f=(f+1)%frames.length;draw();},150);
 }
 
-}); // end window.onload
+render();
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/Attendance/sw.js'));
+if('serviceWorker' in navigator) {
+  window.addEventListener('load',()=>navigator.serviceWorker.register('/Attendance/sw.js'));
 }
 </script>
 </body>
