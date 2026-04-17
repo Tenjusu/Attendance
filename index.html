@@ -290,9 +290,6 @@ async function fetchStudentsForClass(classId){
     render();
   } catch(e){ console.warn('[Firebase] fetchStudents:',e.message); render(); }
 }
- // This forces the app to load data in the correct order
-let totalDashSessions = 0;
-let avgDashRate = 0;
 
 // This forces the app to load data in the correct order
 async function openDashboard(classId) {
