@@ -1,6 +1,3 @@
-Attendance · HTML
-Copy
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,11 +14,11 @@ Copy
 </head>
 <body>
 <main id="app"></main>
- 
+
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-app-compat.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-firestore-compat.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
- 
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -44,8 +41,8 @@ Copy
     --red:#CE1126;--red-bg:#2e1213;--blue:#6badea;--blue-bg:#0c2340;--isu-light:#2e1213;
   }
 }
-body { font-family: 'Fira Code', 'Fira Mono', monospace; background: var(--bg3); min-height: 100vh; width: 100vw; margin: 0; overflow-x: hidden; display: flex; align-items: center; justify-content: center; padding: 1rem; }
-#app { width: 100%; max-width: 550px; min-height: 90vh; background: var(--bg); border-radius: var(--r-lg); border: 0.5px solid var(--border); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.4); display: flex; flex-direction: column; }
+body{font-family:'Fira Code','Fira Mono',monospace;background:var(--bg3);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:1rem 0.75rem 3rem;}
+#app{width:100%;max-width:390px;background:var(--bg);border-radius:var(--r-lg);border:0.5px solid var(--border);overflow:hidden;}
 .isu-header{background:var(--isu);color:#fff;padding:0 1rem;height:var(--header-h);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .isu-header-title{font-size:16px;font-weight:600;}
 .isu-header-sub{font-size:10px;opacity:0.8;margin-top:2px;}
@@ -182,7 +179,7 @@ body { font-family: 'Fira Code', 'Fira Mono', monospace; background: var(--bg3);
 .day-btn{padding:4px 10px;font-size:11px;font-weight:600;border:1.5px solid var(--border2);border-radius:20px;background:var(--bg2);color:var(--text2);cursor:pointer;font-family:'Fira Code',monospace;}
 .day-btn.selected{border-color:var(--isu);background:var(--isu-light);color:var(--isu);}
 </style>
- 
+
 <script>
 /* ─── CONFIG ─────────────────────────────────────────── */
 const FIREBASE_CONFIG = {
@@ -193,16 +190,16 @@ const FIREBASE_CONFIG = {
   messagingSenderId:"235704110221",
   appId:"1:235704110221:web:2b79cc60e34ee315dc66c4"
 };
- 
+
 // Cloud Functions base URL — set this after you deploy the backend
 const FUNCTIONS_URL = 'https://us-central1-mobiletracking-a53ac.cloudfunctions.net';
- 
+
 const PROFESSOR_EMAIL    = 'professor@ilstu.edu';
 const PROFESSOR_PASSWORD = 'Redbirds2026';
- 
+
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.firestore();
- 
+
 /* ─── State ─────────────────────────────────────────────── */
 let STUDENTS       = [];
 let CLASSES        = [];      // loaded from Firestore
@@ -225,7 +222,7 @@ let sheetStudent   = null;
 let overrideTarget = null;
 let selectedDays   = [];
 let newClassData   = {};
- 
+
 /* ─── Auth ───────────────────────────────────────────────── */
 async function login() {
   const email=document.getElementById('email').value.trim();
@@ -244,12 +241,12 @@ async function login() {
     btn.innerHTML='Sign In'; btn.disabled=false;
   }
 }
- 
+
 function logout(){
   stopCamera(); clearInterval(timerID); clearInterval(birdInterval);
   currentUser=null; activeClass=null; CLASSES=[]; phase='login'; render(); setTimeout(initBird,0);
 }
- 
+
 /* ─── Classes ────────────────────────────────────────────── */
 async function fetchClasses(){
   try {
@@ -269,7 +266,7 @@ async function fetchClasses(){
     render();
   } catch(e){ console.warn('[Firebase] fetchClasses:',e.message); render(); }
 }
- 
+
 async function fetchStudentsForClass(classId){
   try {
     const snap = await db.collection('classes').doc(classId).collection('students').get();
@@ -291,14 +288,14 @@ async function fetchStudentsForClass(classId){
     render();
   } catch(e){ console.warn('[Firebase] fetchStudents:',e.message); render(); }
 }
- 
+
 /* ─── Add Class ──────────────────────────────────────────── */
 function toggleDay(day){
   if(selectedDays.includes(day)) selectedDays=selectedDays.filter(d=>d!==day);
   else selectedDays.push(day);
   document.querySelectorAll('.day-btn').forEach(b=>b.classList.toggle('selected',selectedDays.includes(b.dataset.day)));
 }
- 
+
 async function saveNewClass(){
   const code    = document.getElementById('nc-code').value.trim();
   const section = document.getElementById('nc-section').value.trim();
@@ -307,13 +304,13 @@ async function saveNewClass(){
   const time    = document.getElementById('nc-time').value.trim();
   const cap     = parseInt(document.getElementById('nc-cap').value)||30;
   const errEl   = document.getElementById('nc-err');
- 
+
   if(!code||!section||!name){errEl.textContent='Code, section, and name are required.';errEl.classList.add('show');return;}
- 
+
   errEl.classList.remove('show');
   const saveBtn = document.getElementById('nc-save');
   saveBtn.innerHTML='<span class="spinner"></span>'; saveBtn.disabled=true;
- 
+
   try {
     const ref = await db.collection('classes').add({
       code, section, name, type,
@@ -330,10 +327,10 @@ async function saveNewClass(){
     saveBtn.innerHTML='Save Class'; saveBtn.disabled=false;
   }
 }
- 
+
 /* ─── Session ────────────────────────────────────────────── */
 function goToSessionStart(){ phase='session-start'; sessionSecs=360; render(); }
- 
+
 async function startSession(){
   attendance={}; remaining=sessionSecs; sessionDocID=null;
   phase='scanning'; scanMode='camera';
@@ -358,7 +355,7 @@ async function startSession(){
   },1000);
   requestAnimationFrame(()=>startCamera());
 }
- 
+
 async function recordScan(barcodeValue){
   const student=STUDENTS.find(s=>s.barcode.trim().toLowerCase()===barcodeValue.trim().toLowerCase());
   if(!student){showToast('Unknown ID: '+barcodeValue,'empty');return;}
@@ -375,7 +372,7 @@ async function recordScan(barcodeValue){
     });
   } catch(e){ console.warn('[Firebase] write:',e.message); }
 }
- 
+
 async function markStudent(studentId,asLate){
   closeSheet();
   const s=STUDENTS.find(s=>s.id===studentId);
@@ -390,7 +387,7 @@ async function markStudent(studentId,asLate){
     });
   } catch(e){ console.warn('[Firebase] manual write:',e.message); }
 }
- 
+
 async function overrideMarkPresent(studentId){
   const s=STUDENTS.find(s=>s.id===studentId);
   if(!s) return;
@@ -398,7 +395,7 @@ async function overrideMarkPresent(studentId){
   overrideTarget=null; renderSummaryRows();
   try { await db.collection('sessions').doc(sessionDocID).update({['attendance.'+studentId]:{name:s.name,scannedAt:firebase.firestore.Timestamp.fromDate(attendance[studentId].scannedAt),late:false,override:true}}); } catch(e){}
 }
- 
+
 async function overrideMarkTardy(studentId){
   const s=STUDENTS.find(s=>s.id===studentId);
   if(!s) return;
@@ -406,26 +403,26 @@ async function overrideMarkTardy(studentId){
   overrideTarget=null; renderSummaryRows();
   try { await db.collection('sessions').doc(sessionDocID).update({['attendance.'+studentId]:{name:s.name,scannedAt:firebase.firestore.Timestamp.fromDate(attendance[studentId].scannedAt),late:true,override:true}}); } catch(e){}
 }
- 
+
 async function overrideMarkAbsent(studentId){
   delete attendance[studentId]; overrideTarget=null; renderSummaryRows();
   try { await db.collection('sessions').doc(sessionDocID).update({['attendance.'+studentId]:firebase.firestore.FieldValue.delete()}); } catch(e){}
 }
- 
+
 function toggleOverride(studentId){
   overrideTarget=(overrideTarget===studentId?null:studentId); renderSummaryRows();
 }
- 
+
 async function endSession(){
   stopCamera(); phase='summary';
   try { await db.collection('sessions').doc(sessionDocID).update({endedAt:firebase.firestore.FieldValue.serverTimestamp()}); } catch(e){}
   render();
 }
- 
+
 function resetApp(){
   phase='dashboard'; attendance={}; remaining=360; sessionDocID=null; overrideTarget=null; render();
 }
- 
+
 async function showHistory(){
   phase='history'; historyData=[]; render();
   try {
@@ -458,7 +455,7 @@ async function showHistory(){
   }
   render();
 }
- 
+
 /* ─── Semester Report — calls Cloud Function ─────────────── */
 async function showReport(){
   phase='report'; reportData=[]; reportLoading=true; render();
@@ -471,7 +468,7 @@ async function showReport(){
       reportLoading=false; render(); return;
     }
   } catch(e){ console.log('[Report] Cloud Function unavailable, falling back to client-side'); }
- 
+
   // Fallback: client-side calculation
   try {
     let q = db.collection('sessions');
@@ -487,7 +484,7 @@ async function showReport(){
   } catch(e){ console.warn('[Firebase] report:',e.message); }
   reportLoading=false; render();
 }
- 
+
 /* ─── Camera ─────────────────────────────────────────────── */
 function startCamera(){
   if(cameraRunning) return;
@@ -508,13 +505,13 @@ function startCamera(){
     lastVal=val;lastTime=now;recordScan(val);
   });
 }
- 
+
 function stopCamera(){
   if(!cameraRunning)return;
   try{Quagga.stop();}catch(e){}
   cameraRunning=false;
 }
- 
+
 /* ─── Sheet ───────────────────────────────────────────────── */
 function openSheet(studentId){
   if(attendance[studentId])return;
@@ -528,12 +525,12 @@ function openSheet(studentId){
   el.addEventListener('click',e=>{if(e.target===el)closeSheet();});
   document.body.appendChild(el);
 }
- 
+
 function closeSheet(){
   const el=document.getElementById('mark-sheet');
   if(el)el.remove();sheetStudent=null;
 }
- 
+
 /* ─── Helpers ─────────────────────────────────────────────── */
 function fmt(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
 function fmtTime(d){if(!d)return'';const date=d instanceof Date?d:(d.toDate?d.toDate():new Date(d));return date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
@@ -542,17 +539,17 @@ function presentCount(){return Object.values(attendance).filter(a=>!a.late).leng
 function lateCount(){return Object.values(attendance).filter(a=>a.late).length;}
 function totalIn(){return Object.keys(attendance).length;}
 function absentCount(){return STUDENTS.length-totalIn();}
- 
+
 function updateTimer(){
   const el=document.getElementById('timer');
   if(el){el.textContent=fmt(remaining);el.className='isu-timer'+(remaining<=60?' urgent':'');}
 }
- 
+
 function updateCountBadge(){
   const c=document.getElementById('scan-count');if(c)c.textContent=totalIn()+' / '+STUDENTS.length;
   const b=document.getElementById('blind-count');if(b)b.textContent=totalIn();
 }
- 
+
 function showToast(msg,type='ok'){
   const el=document.getElementById('scan-toast');if(!el)return;
   el.className='toast '+type;
@@ -560,7 +557,7 @@ function showToast(msg,type='ok'){
   clearTimeout(lastToastTO);
   lastToastTO=setTimeout(()=>{const e2=document.getElementById('scan-toast');if(e2){e2.className='toast empty';e2.textContent='Hold barcode in frame to scan';}},2500);
 }
- 
+
 function showPrivacyOverlay(name,isLate){
   const wrap=document.getElementById('camera-wrap');if(!wrap)return;
   const old=wrap.querySelector('.privacy-overlay');if(old)old.remove();
@@ -568,13 +565,13 @@ function showPrivacyOverlay(name,isLate){
   el.innerHTML=`<div class="p-icon">${isLate?'&#9203;':'&#10003;'}</div><div class="p-name">${name}</div><div class="p-sub">${isLate?'Marked tardy':'Checked in'}</div>`;
   wrap.appendChild(el);setTimeout(()=>el.remove(),2800);
 }
- 
+
 function setDuration(secs){
   sessionSecs=secs;
   document.querySelectorAll('.dur-btn').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.secs)===secs));
   const n=document.getElementById('dur-note');if(n)n.textContent=fmtMins(secs);
 }
- 
+
 function switchScanMode(mode){
   scanMode=mode;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
@@ -585,18 +582,18 @@ function switchScanMode(mode){
   if(mode==='camera')requestAnimationFrame(()=>startCamera());
   else{stopCamera();updateManualRoster();}
 }
- 
+
 function updateManualRoster(){
   const c=document.getElementById('manual-list');
   if(c)c.innerHTML=STUDENTS.map(s=>manualRowHTML(s)).join('');
 }
- 
+
 function manualRowHTML(s){
   const a=attendance[s.id],checkedIn=!!a,isLate=a&&a.late;
   const pill=checkedIn?`<span class="status-pill ${isLate?'late':'present'}">${isLate?'Tardy':'Present'}</span>`:`<span class="status-pill absent">Absent</span>`;
   return `<div class="student-row${checkedIn?'':' tappable'}" onclick="${checkedIn?'':'openSheet(\''+s.id+'\')'}"><div class="avatar${isLate?' late':checkedIn?' present':''}">${s.name.charAt(0)}</div><div class="student-info"><div class="student-name">${s.name}</div><div class="student-id">${s.barcode}</div></div>${pill}</div>`;
 }
- 
+
 function renderSummaryRows(){
   const c=document.getElementById('summary-roster');
   if(c)c.innerHTML=STUDENTS.map(s=>summaryRowHTML(s)).join('');
@@ -605,7 +602,7 @@ function renderSummaryRows(){
   if(nums[1])nums[1].textContent=lateCount();
   if(nums[2])nums[2].textContent=absentCount();
 }
- 
+
 function summaryRowHTML(s){
   const a=attendance[s.id];
   const present=!!a&&!a.late,late=!!a&&a.late,absent=!a;
@@ -630,12 +627,12 @@ function summaryRowHTML(s){
     </div>
   </div>`;
 }
- 
+
 /* ─── RENDER ──────────────────────────────────────────────── */
 function render(){
   const app=document.getElementById('app');
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
- 
+
   /* LOGIN */
   if(phase==='login'){
     app.innerHTML=`
@@ -657,7 +654,7 @@ function render(){
     document.getElementById('pass').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
     return;
   }
- 
+
   /* CLASS SELECTION */
   if(phase==='class'){
     app.innerHTML=`
@@ -682,7 +679,7 @@ function render(){
       <button class="add-class-btn" onclick="selectedDays=[];phase='add-class';render()">+ Add New Class</button>`;
     return;
   }
- 
+
   /* ADD CLASS */
   if(phase==='add-class'){
     const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -733,7 +730,7 @@ function render(){
       </div>`;
     return;
   }
- 
+
   /* DASHBOARD */
   if(phase==='dashboard'){
     const cls=activeClass||{};
@@ -762,7 +759,7 @@ function render(){
       </div>`;
     return;
   }
- 
+
   /* SESSION START */
   if(phase==='session-start'){
     const cls=activeClass||{};
@@ -789,7 +786,7 @@ function render(){
       <div class="footer-pad"><button class="btn primary" onclick="startSession()">Start Session &rsaquo;</button></div>`;
     return;
   }
- 
+
   /* SCANNING */
   if(phase==='scanning'){
     const cls=activeClass||{};
@@ -820,7 +817,7 @@ function render(){
       </div>`;
     return;
   }
- 
+
   /* SUMMARY */
   if(phase==='summary'){
     const pc=presentCount(),lc=lateCount(),ac=absentCount();
@@ -843,7 +840,7 @@ function render(){
       </div>`;
     return;
   }
- 
+
   /* HISTORY */
   if(phase==='history'){
     const cls=activeClass||{};
@@ -860,7 +857,7 @@ function render(){
       }).join('')}`;
     return;
   }
- 
+
   /* SEMESTER REPORT */
   if(phase==='report'){
     const total=reportData[0]?reportData[0].total:0;
@@ -879,7 +876,7 @@ function render(){
     return;
   }
 }
- 
+
 /* ─── Redbird ─────────────────────────────────────────────── */
 function initBird(){
   clearInterval(birdInterval);
@@ -920,7 +917,7 @@ function initBird(){
   function draw(){cx.clearRect(0,0,CV.width,CV.height);base();for(const[x,y]of frames[f].L)p(x,y,_M);for(const[x,y]of frames[f].R)p(x,y,_D);}
   draw();birdInterval=setInterval(()=>{f=(f+1)%frames.length;draw();},150);
 }
- 
+
 render();
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/Attendance/sw.js'));
 </script>
