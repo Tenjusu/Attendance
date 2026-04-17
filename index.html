@@ -460,7 +460,8 @@ async function endSession(){
 }
 
 function resetApp(){
-  phase='dashboard'; attendance={}; remaining=360; sessionDocID=null; overrideTarget=null; render();
+  attendance={}; remaining=360; sessionDocID=null; overrideTarget=null; 
+  if(activeClass) openDashboard(activeClass.id); // Forces a fresh data pull!
 }
 
 async function showHistory(){
@@ -806,7 +807,7 @@ function render(){
     app.innerHTML=`
       <div class="isu-header">
         <div><div class="isu-header-title">New Session</div><div class="isu-header-sub">${cls.code||''} &middot; ${cls.section||''} &middot; ${today}</div></div>
-        <button class="isu-back-btn" onclick="phase='dashboard';render()">Cancel</button>
+<button class="isu-back-btn" onclick="openDashboard(activeClass.id)">Cancel</button>
       </div>
       <div style="padding:1rem;">
         <div style="font-size:11px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin-bottom:.5rem;">Session Duration</div>
@@ -887,7 +888,7 @@ function render(){
     app.innerHTML=`
       <div class="isu-header">
         <div><div class="isu-header-title">Session History</div><div class="isu-header-sub">${cls.code||''} &middot; ${cls.section||''}</div></div>
-        <button class="isu-back-btn" onclick="phase='dashboard';render()">&#8592;</button>
+        <button class="isu-back-btn" onclick="openDashboard(activeClass.id)">&#8592;</button>
       </div>
       ${historyData.length===0?'<div class="empty-state">No sessions recorded yet for this class.</div>':historyData.map(sess=>{
         const att=sess.attendance||{};
@@ -905,7 +906,7 @@ function render(){
     app.innerHTML=`
       <div class="isu-header">
         <div><div class="isu-header-title">Semester Report</div><div class="isu-header-sub">${total} session${total!==1?'s':''} recorded</div></div>
-        <button class="isu-back-btn" onclick="phase='dashboard';render()">&#8592;</button>
+    <button class="isu-back-btn" onclick="openDashboard(activeClass.id)">&#8592;</button>
       </div>
       ${reportLoading?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Calculating on server...</div>':
         reportData.length===0?'<div class="empty-state">No sessions recorded yet.</div>':`
