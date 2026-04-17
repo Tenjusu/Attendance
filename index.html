@@ -41,8 +41,21 @@
     --red:#CE1126;--red-bg:#2e1213;--blue:#6badea;--blue-bg:#0c2340;--isu-light:#2e1213;
   }
 }
-body{font-family:'Fira Code','Fira Mono',monospace;background:var(--bg3);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:1rem 0.75rem 3rem;}
-#app{width:100%;max-width:390px;background:var(--bg);border-radius:var(--r-lg);border:0.5px solid var(--border);overflow:hidden;}
+
+/* --- THE CENTERING FIX --- */
+html, body {
+  margin: 0; padding: 0; height: 100%; width: 100%;
+}
+body {
+  font-family: 'Fira Code', 'Fira Mono', monospace; background: var(--bg3);
+  display: flex; align-items: center; justify-content: center; padding: 1rem; box-sizing: border-box;
+}
+#app {
+  width: 100%; max-width: 550px; max-height: 95vh; background: var(--bg);
+  border-radius: var(--r-lg); border: 0.5px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  overflow-y: auto; display: flex; flex-direction: column;
+}
+
 .isu-header{background:var(--isu);color:#fff;padding:0 1rem;height:var(--header-h);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .isu-header-title{font-size:16px;font-weight:600;}
 .isu-header-sub{font-size:10px;opacity:0.8;margin-top:2px;}
@@ -66,6 +79,15 @@ body{font-family:'Fira Code','Fira Mono',monospace;background:var(--bg3);min-hei
 .input-field:focus{border-color:var(--isu);}
 .input-select{padding:0.7rem 0.9rem;font-size:14px;color:var(--text);background:var(--bg2);border:1.5px solid var(--border2);border-radius:var(--r-md);outline:none;width:100%;font-family:'Fira Code',monospace;appearance:none;-webkit-appearance:none;}
 .input-select:focus{border-color:var(--isu);}
+.password-wrap { position: relative; }
+.password-wrap .input-field { padding-right: 2.8rem; }
+.eye-btn {
+  position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; color: var(--text3);
+  padding: 4px; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; line-height: 1;
+}
+.eye-btn:active { color: var(--isu); }
 .login-error{font-size:12px;color:var(--isu);background:var(--isu-light);border:1px solid rgba(206,17,38,0.2);border-radius:var(--r-md);padding:0.55rem 0.85rem;display:none;}
 .login-error.show{display:block;}
 .section-label{font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);font-weight:600;padding:0.65rem 1rem 0.35rem;border-bottom:0.5px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:space-between;}
@@ -191,23 +213,53 @@ const FIREBASE_CONFIG = {
   appId:"1:235704110221:web:2b79cc60e34ee315dc66c4"
 };
 
-// Cloud Functions base URL — set this after you deploy the backend
 const FUNCTIONS_URL = 'https://us-central1-mobiletracking-a53ac.cloudfunctions.net';
-
 const PROFESSOR_EMAIL    = 'professor@ilstu.edu';
 const PROFESSOR_PASSWORD = 'Redbirds2026';
 
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.firestore();
 
+/* ─── Audio feedback ─────────────────────────────────────── */
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playSound(type) {
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc      = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    if (type === 'success') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.08);
+      gainNode.gain.setValueAtTime(0.12, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.start(); osc.stop(ctx.currentTime + 0.25);
+    } else if (type === 'error') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(160, ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.start(); osc.stop(ctx.currentTime + 0.35);
+    }
+  } catch(e) { /* audio not supported — fail silently */ }
+}
+
 /* ─── State ─────────────────────────────────────────────── */
 let STUDENTS       = [];
-let CLASSES        = [];      // loaded from Firestore
-let activeClass    = null;    // { id, code, section, name, type, days, meetingTime, capacity }
-let phase          = 'login'; // login | class | add-class | dashboard | session-start | scanning | summary | history | report
+let CLASSES        = [];
+let activeClass    = null;
+let phase          = 'login';
 let currentUser    = null;
 let remaining      = 360;
 let sessionSecs    = 360;
+let tardyThresholdSecs = 300; // <--- The Tardy Parameter Variable!
 let attendance     = {};
 let timerID        = null;
 let sessionDocID   = null;
@@ -222,8 +274,6 @@ let sheetStudent   = null;
 let overrideTarget = null;
 let selectedDays   = [];
 let newClassData   = {};
-let totalDashSessions = 0;
-let avgDashRate = 0;   
 
 /* ─── Auth ───────────────────────────────────────────────── */
 async function login() {
@@ -244,6 +294,21 @@ async function login() {
   }
 }
 
+function togglePass(){
+  const input=document.getElementById('pass');
+  const btn=document.getElementById('eye-btn');
+  if(!input||!btn) return;
+  if(input.type==='password'){
+    input.type='text';
+    btn.innerHTML='&#128064;';
+    btn.setAttribute('aria-label','Hide password');
+  } else {
+    input.type='password';
+    btn.innerHTML='&#128065;';
+    btn.setAttribute('aria-label','Show password');
+  }
+}
+
 function logout(){
   stopCamera(); clearInterval(timerID); clearInterval(birdInterval);
   currentUser=null; activeClass=null; CLASSES=[]; phase='login'; render(); setTimeout(initBird,0);
@@ -254,7 +319,6 @@ async function fetchClasses(){
   try {
     const snap = await db.collection('classes').where('professor','==',currentUser.email).get();
     CLASSES = snap.docs.map(d=>({id:d.id,...d.data()}));
-    // If no classes yet, seed the default IT391
     if(CLASSES.length===0){
       const ref = await db.collection('classes').add({
         code:'IT 391', section:'002',
@@ -274,7 +338,6 @@ async function fetchStudentsForClass(classId){
     const snap = await db.collection('classes').doc(classId).collection('students').get();
     STUDENTS = snap.docs.map(d=>({id:d.id,name:d.data().name,barcode:d.id}));
     if(STUDENTS.length===0){
-      // fallback to root Students collection
       const snap2 = await db.collection('Students').get();
       STUDENTS = snap2.docs.map(d=>({id:d.id,name:d.data().name,barcode:d.id}));
     }
@@ -290,44 +353,6 @@ async function fetchStudentsForClass(classId){
     render();
   } catch(e){ console.warn('[Firebase] fetchStudents:',e.message); render(); }
 }
-
-// This forces the app to load data in the correct order
-async function openDashboard(classId) {
-  activeClass = CLASSES.find(c => c.id === classId);
-  phase = 'dashboard';
-  totalDashSessions = 0; // Clear old data
-  avgDashRate = 0;       // Clear old data
-  render(); // Show the screen immediately
-
-  await fetchStudentsForClass(classId); // 1. Wait for students to load
-  await fetchDashboardStats(classId);   // 2. Wait for session stats and do the math
-}
-
-// This queries Firebase and does the math
-async function fetchDashboardStats(classId) {
-  try {
-    const snap = await db.collection('sessions').where('classId','==',classId).get();
-    totalDashSessions = snap.size;
-
-    // Only do math if we have sessions AND students loaded
-    if (totalDashSessions > 0 && STUDENTS.length > 0) {
-      let totalCheckins = 0;
-      
-      snap.docs.forEach(doc => {
-        const att = doc.data().attendance || {};
-        totalCheckins += Object.keys(att).length; // Count total presents/tardies
-      });
-      
-      const totalPossible = totalDashSessions * STUDENTS.length;
-      avgDashRate = Math.round((totalCheckins / totalPossible) * 100);
-    }
-    render(); // Update the UI with the final numbers!
-  } catch(e) {
-    console.warn('[Firebase] fetch stats:', e.message);
-  }
-}
-
-    
 
 /* ─── Add Class ──────────────────────────────────────────── */
 function toggleDay(day){
@@ -353,12 +378,8 @@ async function saveNewClass(){
 
   try {
     const ref = await db.collection('classes').add({
-      code, section, name, type,
-      days: selectedDays,
-      meetingTime: time,
-      capacity: cap,
-      professor: currentUser.email,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      code, section, name, type, days: selectedDays, meetingTime: time, capacity: cap,
+      professor: currentUser.email, createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     CLASSES.push({id:ref.id,code,section,name,type,days:selectedDays,meetingTime:time,capacity:cap,professor:currentUser.email});
     selectedDays=[]; phase='class'; render();
@@ -369,7 +390,8 @@ async function saveNewClass(){
 }
 
 /* ─── Session ────────────────────────────────────────────── */
-function goToSessionStart(){ phase='session-start'; sessionSecs=360; render(); }
+// RESET DEFAULTS WHEN CREATING A NEW SESSION
+function goToSessionStart(){ phase='session-start'; sessionSecs=360; tardyThresholdSecs=300; render(); }
 
 async function startSession(){
   attendance={}; remaining=sessionSecs; sessionDocID=null;
@@ -398,11 +420,30 @@ async function startSession(){
 
 async function recordScan(barcodeValue){
   const student=STUDENTS.find(s=>s.barcode.trim().toLowerCase()===barcodeValue.trim().toLowerCase());
-  if(!student){showToast('Unknown ID: '+barcodeValue,'empty');return;}
-  if(attendance[student.id]) return;
+
+  // ERROR: Not on roster
+  if(!student){
+    playSound('error');
+    showToast('Unknown ID: '+barcodeValue,'empty');
+    return;
+  }
+
+  // ERROR: Duplicate scan
+  if(attendance[student.id]){
+    playSound('error');
+    showToast('Already scanned: '+student.name,'empty');
+    return;
+  }
+
+  // SUCCESS: Valid scan
   const scannedAt=new Date();
-  const isLate=remaining<60; // late = last minute only (no threshold UI)
+  
+  // TARDY PARAMETER MATH
+  const elapsed = sessionSecs - remaining;
+  const isLate = elapsed >= tardyThresholdSecs; 
+  
   attendance[student.id]={name:student.name,scannedAt,late:isLate,override:false};
+  playSound('success');
   showPrivacyOverlay(student.name,isLate);
   showToast(isLate?student.name+' — marked tardy':student.name+' checked in',isLate?'late':'ok');
   updateCountBadge();
@@ -460,8 +501,7 @@ async function endSession(){
 }
 
 function resetApp(){
-  attendance={}; remaining=360; sessionDocID=null; overrideTarget=null; 
-  if(activeClass) openDashboard(activeClass.id); // Forces a fresh data pull!
+  phase='dashboard'; attendance={}; remaining=360; sessionDocID=null; overrideTarget=null; render();
 }
 
 async function showHistory(){
@@ -469,25 +509,14 @@ async function showHistory(){
   try {
     let snap;
     if(activeClass){
-      // Filter by classId first, sort client-side to avoid needing a composite index
-      snap = await db.collection('sessions')
-        .where('classId','==',activeClass.id)
-        .limit(20)
-        .get();
-      historyData = snap.docs
-        .map(d=>({id:d.id,...d.data()}))
-        .sort((a,b)=>{
+      snap = await db.collection('sessions').where('classId','==',activeClass.id).limit(20).get();
+      historyData = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>{
           const ta = a.startedAt ? a.startedAt.toMillis() : 0;
           const tb = b.startedAt ? b.startedAt.toMillis() : 0;
           return tb - ta;
-        })
-        .slice(0,10);
+        }).slice(0,10);
     } else {
-      // No class filter — orderBy alone is fine without a composite index
-      snap = await db.collection('sessions')
-        .orderBy('startedAt','desc')
-        .limit(10)
-        .get();
+      snap = await db.collection('sessions').orderBy('startedAt','desc').limit(10).get();
       historyData = snap.docs.map(d=>({id:d.id,...d.data()}));
     }
   } catch(e){
@@ -497,11 +526,9 @@ async function showHistory(){
   render();
 }
 
-/* ─── Semester Report — calls Cloud Function ─────────────── */
 async function showReport(){
   phase='report'; reportData=[]; reportLoading=true; render();
   try {
-    // Try Cloud Function first (fast, server-side)
     const res = await fetch(`${FUNCTIONS_URL}/semesterReport?classId=${activeClass?activeClass.id:''}&professor=${encodeURIComponent(currentUser.email)}`,{method:'GET'});
     if(res.ok){
       const data = await res.json();
@@ -510,7 +537,6 @@ async function showReport(){
     }
   } catch(e){ console.log('[Report] Cloud Function unavailable, falling back to client-side'); }
 
-  // Fallback: client-side calculation
   try {
     let q = db.collection('sessions');
     if(activeClass) q=q.where('classId','==',activeClass.id);
@@ -609,8 +635,19 @@ function showPrivacyOverlay(name,isLate){
 
 function setDuration(secs){
   sessionSecs=secs;
-  document.querySelectorAll('.dur-btn').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.secs)===secs));
-  const n=document.getElementById('dur-note');if(n)n.textContent=fmtMins(secs);
+  document.querySelectorAll('.dur-btn:not(.tardy-btn)').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.secs)===secs));
+  updateDurNote();
+}
+
+function setTardyThreshold(secs){
+  tardyThresholdSecs=secs;
+  document.querySelectorAll('.tardy-btn').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.secs)===secs));
+  updateDurNote();
+}
+
+function updateDurNote(){
+  const n=document.getElementById('dur-note');
+  if(n) n.innerHTML=`Session open for <strong>${fmtMins(sessionSecs)}</strong>.<br>Students scanning after <strong>${tardyThresholdSecs === 99999 ? 'Never' : fmtMins(tardyThresholdSecs)}</strong> are marked tardy.`;
 }
 
 function switchScanMode(mode){
@@ -686,7 +723,7 @@ function render(){
           <div class="typing-wrap"><div class="typing-line">FlyBy</div><div class="typing-sub">IT391 &middot; Professor sign-in</div></div>
         </div>
         <div class="input-group"><div class="input-label">Email</div><input id="email" class="input-field" type="email" placeholder="professor@ilstu.edu" autocomplete="email"></div>
-        <div class="input-group"><div class="input-label">Password</div><input id="pass" class="input-field" type="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password"></div>
+        <div class="input-group"><div class="input-label">Password</div><div class="password-wrap"><input id="pass" class="input-field" type="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password"><button class="eye-btn" type="button" onclick="togglePass()" id="eye-btn" aria-label="Show password">&#128065;</button></div></div>
         <div id="login-err" class="login-error"></div>
         <button id="login-btn" class="btn primary" onclick="login()">Sign In</button>
         <p style="font-size:11px;color:var(--text3);text-align:center;">Professor Portal &middot; Illinois State University</p>
@@ -696,7 +733,7 @@ function render(){
     return;
   }
 
- /* CLASS SELECTION */
+  /* CLASS SELECTION */
   if(phase==='class'){
     app.innerHTML=`
       <div class="isu-header">
@@ -705,7 +742,7 @@ function render(){
       </div>
       <div style="padding:0.75rem 0.85rem 0;font-size:11px;color:var(--text3);">${today}</div>
       ${CLASSES.length===0?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>':CLASSES.map(cls=>`
-        <div class="class-card" onclick="openDashboard('${cls.id}')">
+        <div class="class-card" onclick="activeClass=CLASSES.find(c=>c.id==='${cls.id}');fetchStudentsForClass('${cls.id}');phase='dashboard';render()">
           <div class="class-card-header">
             <div class="class-code">${cls.code}</div>
             <div class="class-section-badge">Section ${cls.section}</div>
@@ -781,10 +818,10 @@ function render(){
         <button class="isu-back-btn" onclick="phase='class';render()">&#8592;</button>
       </div>
       <div class="stat-row">
-  <div class="stat-card"><div class="stat-num green">${cls.capacity||STUDENTS.length}</div><div class="stat-lbl">Enrolled</div></div>
-  <div class="stat-card"><div class="stat-num gray">${totalDashSessions}</div><div class="stat-lbl">Sessions</div></div>
-  <div class="stat-card"><div class="stat-num amber">${totalDashSessions > 0 ? avgDashRate + '%' : '&#8212;'}</div><div class="stat-lbl">Avg Rate</div></div>
-</div>
+        <div class="stat-card"><div class="stat-num green">${cls.capacity||STUDENTS.length}</div><div class="stat-lbl">Enrolled</div></div>
+        <div class="stat-card"><div class="stat-num gray">${historyData.length||0}</div><div class="stat-lbl">Sessions</div></div>
+        <div class="stat-card"><div class="stat-num amber">&#8212;</div><div class="stat-lbl">Avg Rate</div></div>
+      </div>
       <div class="section-label"><span>Roster</span><span>${STUDENTS.length} students</span></div>
       ${STUDENTS.length===0?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>':STUDENTS.map(s=>`
         <div class="student-row">
@@ -807,21 +844,33 @@ function render(){
     app.innerHTML=`
       <div class="isu-header">
         <div><div class="isu-header-title">New Session</div><div class="isu-header-sub">${cls.code||''} &middot; ${cls.section||''} &middot; ${today}</div></div>
-<button class="isu-back-btn" onclick="openDashboard(activeClass.id)">Cancel</button>
+        <button class="isu-back-btn" onclick="phase='dashboard';render()">Cancel</button>
       </div>
-      <div style="padding:1rem;">
-        <div style="font-size:11px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin-bottom:.5rem;">Session Duration</div>
+      <div style="padding:1rem; flex: 1; overflow-y: auto;">
+        
+        <div style="font-size:11px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin-bottom:.5rem;">Total Session Duration</div>
         <div class="duration-grid">
-          <button class="dur-btn" data-secs="300" onclick="setDuration(300)">5 min</button>
-          <button class="dur-btn selected" data-secs="360" onclick="setDuration(360)">6 min</button>
-          <button class="dur-btn" data-secs="600" onclick="setDuration(600)">10 min</button>
-          <button class="dur-btn" data-secs="900" onclick="setDuration(900)">15 min</button>
-          <button class="dur-btn" data-secs="1800" onclick="setDuration(1800)">30 min</button>
-          <button class="dur-btn" data-secs="2700" onclick="setDuration(2700)">45 min</button>
+          <button class="dur-btn ${sessionSecs===300?'selected':''}" data-secs="300" onclick="setDuration(300)">5 min</button>
+          <button class="dur-btn ${sessionSecs===360?'selected':''}" data-secs="360" onclick="setDuration(360)">6 min</button>
+          <button class="dur-btn ${sessionSecs===600?'selected':''}" data-secs="600" onclick="setDuration(600)">10 min</button>
+          <button class="dur-btn ${sessionSecs===900?'selected':''}" data-secs="900" onclick="setDuration(900)">15 min</button>
+          <button class="dur-btn ${sessionSecs===1800?'selected':''}" data-secs="1800" onclick="setDuration(1800)">30 min</button>
+          <button class="dur-btn ${sessionSecs===2700?'selected':''}" data-secs="2700" onclick="setDuration(2700)">45 min</button>
         </div>
-        <div class="note-box" style="margin:1rem 0 0;">
-          Session open for <strong id="dur-note">${fmtMins(sessionSecs)}</strong>.
-          Students scanned in the final minute are marked tardy.
+
+        <div style="font-size:11px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin-top:1.5rem;margin-bottom:.5rem;">Mark Tardy After</div>
+        <div class="duration-grid">
+          <button class="dur-btn tardy-btn ${tardyThresholdSecs===60?'selected':''}" data-secs="60" onclick="setTardyThreshold(60)">1 min</button>
+          <button class="dur-btn tardy-btn ${tardyThresholdSecs===180?'selected':''}" data-secs="180" onclick="setTardyThreshold(180)">3 min</button>
+          <button class="dur-btn tardy-btn ${tardyThresholdSecs===300?'selected':''}" data-secs="300" onclick="setTardyThreshold(300)">5 min</button>
+          <button class="dur-btn tardy-btn ${tardyThresholdSecs===600?'selected':''}" data-secs="600" onclick="setTardyThreshold(600)">10 min</button>
+          <button class="dur-btn tardy-btn ${tardyThresholdSecs===900?'selected':''}" data-secs="900" onclick="setTardyThreshold(900)">15 min</button>
+          <button class="dur-btn tardy-btn ${tardyThresholdSecs===99999?'selected':''}" data-secs="99999" onclick="setTardyThreshold(99999)">Never</button>
+        </div>
+
+        <div class="note-box" style="margin:1rem 0 0;" id="dur-note">
+          Session open for <strong>${fmtMins(sessionSecs)}</strong>.<br>
+          Students scanning after <strong>${tardyThresholdSecs === 99999 ? 'Never' : fmtMins(tardyThresholdSecs)}</strong> are marked tardy.
         </div>
       </div>
       <div class="footer-pad"><button class="btn primary" onclick="startSession()">Start Session &rsaquo;</button></div>`;
@@ -888,7 +937,7 @@ function render(){
     app.innerHTML=`
       <div class="isu-header">
         <div><div class="isu-header-title">Session History</div><div class="isu-header-sub">${cls.code||''} &middot; ${cls.section||''}</div></div>
-        <button class="isu-back-btn" onclick="openDashboard(activeClass.id)">&#8592;</button>
+        <button class="isu-back-btn" onclick="phase='dashboard';render()">&#8592;</button>
       </div>
       ${historyData.length===0?'<div class="empty-state">No sessions recorded yet for this class.</div>':historyData.map(sess=>{
         const att=sess.attendance||{};
@@ -906,7 +955,7 @@ function render(){
     app.innerHTML=`
       <div class="isu-header">
         <div><div class="isu-header-title">Semester Report</div><div class="isu-header-sub">${total} session${total!==1?'s':''} recorded</div></div>
-    <button class="isu-back-btn" onclick="openDashboard(activeClass.id)">&#8592;</button>
+        <button class="isu-back-btn" onclick="phase='dashboard';render()">&#8592;</button>
       </div>
       ${reportLoading?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Calculating on server...</div>':
         reportData.length===0?'<div class="empty-state">No sessions recorded yet.</div>':`
