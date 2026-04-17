@@ -290,23 +290,41 @@ async function fetchStudentsForClass(classId){
     render();
   } catch(e){ console.warn('[Firebase] fetchStudents:',e.message); render(); }
 }
- async function fetchDashboardStats(classId) {
-  totalDashSessions = 0; 
-  avgDashRate = 0; 
+ // This forces the app to load data in the correct order
+async function openDashboard(classId) {
+  activeClass = CLASSES.find(c => c.id === classId);
+  phase = 'dashboard';
+  totalDashSessions = 0; // Clear old data
+  avgDashRate = 0;       // Clear old data
+  render(); // Show the screen immediately
+
+  await fetchStudentsForClass(classId); // 1. Wait for students to load
+  await fetchDashboardStats(classId);   // 2. Wait for session stats and do the math
+}
+
+// This queries Firebase and does the math
+async function fetchDashboardStats(classId) {
   try {
     const snap = await db.collection('sessions').where('classId','==',classId).get();
-    totalDashSessions = snap.size; 
+    totalDashSessions = snap.size;
 
+    // Only do math if we have sessions AND students loaded
     if (totalDashSessions > 0 && STUDENTS.length > 0) {
       let totalCheckins = 0;
       
-     
       snap.docs.forEach(doc => {
-        const sess = doc.data();
-        const att = sess.attendance || {};
-      
-        totalCheckins += Object.keys(att).length; 
+        const att = doc.data().attendance || {};
+        totalCheckins += Object.keys(att).length; // Count total presents/tardies
       });
+      
+      const totalPossible = totalDashSessions * STUDENTS.length;
+      avgDashRate = Math.round((totalCheckins / totalPossible) * 100);
+    }
+    render(); // Update the UI with the final numbers!
+  } catch(e) {
+    console.warn('[Firebase] fetch stats:', e.message);
+  }
+}
 
       
       const totalPossible = totalDashSessions * STUDENTS.length;
@@ -685,7 +703,7 @@ function render(){
     return;
   }
 
-  /* CLASS SELECTION */
+ /* CLASS SELECTION */
   if(phase==='class'){
     app.innerHTML=`
       <div class="isu-header">
@@ -694,7 +712,7 @@ function render(){
       </div>
       <div style="padding:0.75rem 0.85rem 0;font-size:11px;color:var(--text3);">${today}</div>
       ${CLASSES.length===0?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>':CLASSES.map(cls=>`
-        <div class="class-card" onclick="activeClass=CLASSES.find(c=>c.id==='${cls.id}');fetchStudentsForClass('${cls.id}');phase='dashboard';render()">
+        <div class="class-card" onclick="openDashboard('${cls.id}')">
           <div class="class-card-header">
             <div class="class-code">${cls.code}</div>
             <div class="class-section-badge">Section ${cls.section}</div>
@@ -770,10 +788,10 @@ function render(){
         <button class="isu-back-btn" onclick="phase='class';render()">&#8592;</button>
       </div>
       <div class="stat-row">
-        <div class="stat-card"><div class="stat-num green">${cls.capacity||STUDENTS.length}</div><div class="stat-lbl">Enrolled</div></div>
-        <div class="stat-card"><div class="stat-num gray">${totalDashSessions}</div><div class="stat-lbl">Sessions</div></div>
-<div class="stat-card"><div class="stat-num amber">${totalDashSessions > 0 ? avgDashRate + '%' : '&#8212;'}</div><div class="stat-lbl">Avg Rate</div></div>
-      </div>
+  <div class="stat-card"><div class="stat-num green">${cls.capacity||STUDENTS.length}</div><div class="stat-lbl">Enrolled</div></div>
+  <div class="stat-card"><div class="stat-num gray">${totalDashSessions}</div><div class="stat-lbl">Sessions</div></div>
+  <div class="stat-card"><div class="stat-num amber">${totalDashSessions > 0 ? avgDashRate + '%' : '&#8212;'}</div><div class="stat-lbl">Avg Rate</div></div>
+</div>
       <div class="section-label"><span>Roster</span><span>${STUDENTS.length} students</span></div>
       ${STUDENTS.length===0?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>':STUDENTS.map(s=>`
         <div class="student-row">
