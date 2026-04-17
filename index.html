@@ -222,6 +222,8 @@ let sheetStudent   = null;
 let overrideTarget = null;
 let selectedDays   = [];
 let newClassData   = {};
+let totalDashSessions = 0;
+let avgDashRate = 0;   
 
 /* ─── Auth ───────────────────────────────────────────────── */
 async function login() {
@@ -288,6 +290,34 @@ async function fetchStudentsForClass(classId){
     render();
   } catch(e){ console.warn('[Firebase] fetchStudents:',e.message); render(); }
 }
+ async function fetchDashboardStats(classId) {
+  totalDashSessions = 0; 
+  avgDashRate = 0; 
+  try {
+    const snap = await db.collection('sessions').where('classId','==',classId).get();
+    totalDashSessions = snap.size; 
+
+    if (totalDashSessions > 0 && STUDENTS.length > 0) {
+      let totalCheckins = 0;
+      
+     
+      snap.docs.forEach(doc => {
+        const sess = doc.data();
+        const att = sess.attendance || {};
+      
+        totalCheckins += Object.keys(att).length; 
+      });
+
+      
+      const totalPossible = totalDashSessions * STUDENTS.length;
+      avgDashRate = Math.round((totalCheckins / totalPossible) * 100);
+    }
+
+    render(); 
+  } catch(e) { 
+    console.warn('[Firebase] fetch stats:', e.message); 
+  }
+} 
 
 /* ─── Add Class ──────────────────────────────────────────── */
 function toggleDay(day){
@@ -741,8 +771,8 @@ function render(){
       </div>
       <div class="stat-row">
         <div class="stat-card"><div class="stat-num green">${cls.capacity||STUDENTS.length}</div><div class="stat-lbl">Enrolled</div></div>
-        <div class="stat-card"><div class="stat-num gray">${historyData.length||0}</div><div class="stat-lbl">Sessions</div></div>
-        <div class="stat-card"><div class="stat-num amber">&#8212;</div><div class="stat-lbl">Avg Rate</div></div>
+        <div class="stat-card"><div class="stat-num gray">${totalDashSessions}</div><div class="stat-lbl">Sessions</div></div>
+<div class="stat-card"><div class="stat-num amber">${totalDashSessions > 0 ? avgDashRate + '%' : '&#8212;'}</div><div class="stat-lbl">Avg Rate</div></div>
       </div>
       <div class="section-label"><span>Roster</span><span>${STUDENTS.length} students</span></div>
       ${STUDENTS.length===0?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>':STUDENTS.map(s=>`
