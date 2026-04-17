@@ -330,16 +330,7 @@ async function fetchDashboardStats(classId) {
   }
 }
 
-      
-      const totalPossible = totalDashSessions * STUDENTS.length;
-      avgDashRate = Math.round((totalCheckins / totalPossible) * 100);
-    }
-
-    render(); 
-  } catch(e) { 
-    console.warn('[Firebase] fetch stats:', e.message); 
-  }
-} 
+    
 
 /* ─── Add Class ──────────────────────────────────────────── */
 function toggleDay(day){
