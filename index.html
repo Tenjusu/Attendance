@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#CE1126">
   <link rel="manifest" href="manifest.json">
   <title>FlyBy — ISU Attendance</title>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Public+Sans:wght@700;800&display=swap" rel="stylesheet">
 </head>
 <body>
 <main id="app"></main>
@@ -55,7 +55,16 @@ body {
   border-radius: var(--r-lg); border: 0.5px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.3);
   overflow-y: auto; display: flex; flex-direction: column;
 }
+/* --- SMOOTH PAGE TRANSITIONS --- */
+@keyframes pageEnter {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
 
+#app > * {
+  opacity: 0; /* Prevents a brief flash before the animation starts */
+  animation: pageEnter 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
 .isu-header{background:var(--isu);color:#fff;padding:0 1rem;height:var(--header-h);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .isu-header-title{font-size:16px;font-weight:600;}
 .isu-header-sub{font-size:10px;opacity:0.8;margin-top:2px;}
@@ -165,23 +174,100 @@ body {
 .live-badge{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#fff;}
 .live-dot{width:7px;height:7px;border-radius:50%;background:#fff;animation:pulse 1.4s ease-in-out infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+
+/* ── Bottom navigation bar ────────────────────────────────── */
+.bottom-nav{
+  display:flex;align-items:center;justify-content:space-around;
+  height:64px;background:var(--bg);
+  border-top:0.5px solid var(--border);
+  flex-shrink:0;
+  position:sticky;bottom:0;
+  width: 100%;
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:none;border:none;cursor:pointer;
+  font-family:'Fira Code',monospace;font-size:10px;
+  color:var(--text3);padding:8px 16px;
+  transition:color 0.15s;
+  -webkit-tap-highlight-color:transparent;
+  flex:1;
+}
+.nav-item.active{color:var(--isu);}
+.nav-icon{font-size:20px;line-height:1;}
+.nav-dot{
+  width:5px;height:5px;border-radius:50%;background:var(--isu);
+  position:absolute;top:-2px;right:-2px;
+}
+.nav-icon-wrap{position:relative;display:inline-flex;}
+
+/* ── Academic history card (new design) ───────────────────── */
+.hist-card{
+  background:var(--bg);border-radius:16px;
+  padding:1.1rem 1.1rem 0.9rem;
+  margin:0 0.85rem 0.85rem;
+  box-shadow:0 8px 32px rgba(26,28,28,0.08);
+}
+.hist-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.9rem;}
+.hist-date{font-family:'Public Sans','Fira Code',monospace;font-size:17px;font-weight:700;color:var(--text);letter-spacing:-0.02em;}
+.hist-dow{font-size:11px;color:var(--text3);margin-top:2px;}
+.hist-present-badge{
+  display:flex;align-items:center;gap:5px;
+  background:var(--isu-light);color:var(--isu);
+  font-size:11px;font-weight:600;border-radius:20px;
+  padding:4px 10px;white-space:nowrap;
+}
+.hist-present-dot{width:6px;height:6px;border-radius:50%;background:var(--isu);flex-shrink:0;}
+.hist-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+.hist-stat-box{background:var(--bg2);border-radius:10px;padding:0.6rem 0.5rem;text-align:center;}
+.hist-stat-lbl{font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);font-weight:600;margin-bottom:3px;}
+.hist-stat-num{font-size:20px;font-weight:700;font-family:'Fira Code',monospace;}
+.hist-stat-num.red{color:var(--red);}
+.hist-stat-num.amber{color:var(--amber);}
+.hist-stat-num.muted{color:var(--text3);}
+
+/* ── Session detail panel ─────────────────────────────────── */
+.detail-panel{
+  background:var(--bg);border-radius:16px;
+  margin:0 0.85rem 1rem;
+  box-shadow:0 8px 32px rgba(26,28,28,0.08);
+  overflow:hidden;
+}
+.detail-panel-header{padding:1rem 1.1rem 0.75rem;}
+.detail-panel-label{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--isu);font-weight:700;margin-bottom:4px;}
+.detail-panel-date{font-family:'Public Sans','Fira Code',monospace;font-size:20px;font-weight:700;color:var(--text);letter-spacing:-0.01em;}
+.detail-panel-sub{font-size:12px;color:var(--text3);margin-top:2px;}
+.detail-group-label{
+  display:flex;align-items:center;gap:8px;
+  padding:0.6rem 1.1rem;
+  font-size:13px;font-weight:600;color:var(--isu);
+  border-top:0.5px solid var(--border);
+}
+.detail-student-row{
+  display:flex;align-items:center;gap:10px;
+  padding:0.65rem 1.1rem;
+  border-top:0.5px solid var(--border);
+}
+.detail-avatar{
+  width:36px;height:36px;border-radius:50%;
+  background:var(--bg2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:var(--text2);
+  flex-shrink:0;
+}
+.detail-student-name{font-size:13px;font-weight:500;color:var(--text);}
+.detail-student-id{font-size:10px;color:var(--text3);font-family:'Fira Code',monospace;}
+.detail-mail-btn{margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:4px;}
+.detail-edit-btn{
+  display:block;width:calc(100% - 1.7rem);margin:0 0.85rem 1rem;
+  padding:0.85rem;text-align:center;font-size:14px;font-weight:600;
+  background:linear-gradient(135deg,#a30019,#ce1126);color:#fff;
+  border:none;border-radius:12px;cursor:pointer;font-family:'Fira Code',monospace;
+}
+.detail-edit-btn:active{opacity:0.85;}
+
 .summary-row{display:flex;align-items:center;justify-content:space-between;padding:0.65rem 1rem;border-bottom:0.5px solid var(--border);}
 .summary-row:last-child{border-bottom:none;}
-.history-session{padding:0.85rem 1rem;border-bottom:0.5px solid var(--border);}
-.history-session:last-child{border-bottom:none;}
-.history-date{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;}
-.history-meta{font-size:11px;color:var(--text2);margin-bottom:7px;}
-.history-pills{display:flex;flex-wrap:wrap;gap:5px;}
-.history-pill{font-size:10px;padding:2px 9px;border-radius:20px;border:0.5px solid var(--border);}
-.history-pill.present{background:var(--green-bg);color:var(--green);border-color:var(--green-br);}
-.history-pill.late{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-br);}
-.history-pill.absent{background:var(--bg2);color:var(--text3);}
-.report-row{display:flex;align-items:center;justify-content:space-between;padding:0.7rem 1rem;border-bottom:0.5px solid var(--border);}
-.report-row:last-child{border-bottom:none;}
-.report-name{font-size:13px;font-weight:500;color:var(--text);}
-.report-pct{font-size:10px;color:var(--text3);margin-top:2px;}
-.report-stats{display:flex;gap:8px;font-size:11px;font-family:'Fira Code',monospace;}
-.rp{color:var(--green);}.rl{color:var(--amber);}.ra{color:var(--text3);}
 .empty-state{padding:2.5rem 1rem;text-align:center;color:var(--text3);font-size:12px;}
 .note-box{margin:1rem;padding:0.75rem 0.9rem;background:var(--bg2);border-radius:var(--r-md);border:0.5px solid var(--border);font-size:11px;color:var(--text2);line-height:1.6;}
 .footer-pad{padding:1rem;display:flex;flex-direction:column;gap:0.6rem;}
@@ -259,7 +345,7 @@ let phase          = 'login';
 let currentUser    = null;
 let remaining      = 360;
 let sessionSecs    = 360;
-let tardyThresholdSecs = 300; // <--- The Tardy Parameter Variable!
+let tardyThresholdSecs = 300;
 let attendance     = {};
 let timerID        = null;
 let sessionDocID   = null;
@@ -268,12 +354,16 @@ let cameraRunning  = false;
 let historyData    = [];
 let reportData     = [];
 let reportLoading  = false;
+let selectedSession = null;
 let birdInterval   = null;
 let scanMode       = 'camera';
 let sheetStudent   = null;
 let overrideTarget = null;
 let selectedDays   = [];
 let newClassData   = {};
+
+let totalDashSessions = 0; 
+let avgDashRate = 0;       
 
 /* ─── Auth ───────────────────────────────────────────────── */
 async function login() {
@@ -333,7 +423,7 @@ async function fetchClasses(){
   } catch(e){ console.warn('[Firebase] fetchClasses:',e.message); render(); }
 }
 
-async function fetchStudentsForClass(classId){
+async function fetchStudentsForClass(classId, skipRender = false){
   try {
     const snap = await db.collection('classes').doc(classId).collection('students').get();
     STUDENTS = snap.docs.map(d=>({id:d.id,name:d.data().name,barcode:d.id}));
@@ -350,27 +440,109 @@ async function fetchStudentsForClass(classId){
         {id:'STU-100005', name:'Member 5',barcode:'STU-100005'},
       ];
     }
-    render();
-  } catch(e){ console.warn('[Firebase] fetchStudents:',e.message); render(); }
+    if (!skipRender) render();
+  } catch(e){ console.warn('[Firebase] fetchStudents:',e.message); if (!skipRender) render(); }
 }
 
+/* ─── Dashboard Stats ─────────────────────── */
+async function openDashboard(classId) {
+  activeClass = CLASSES.find(c => c.id === classId);
+  totalDashSessions = 0; 
+  avgDashRate = 0;       
+
+  // Fetch the data silently behind the scenes
+  await fetchStudentsForClass(classId, true); 
+  await fetchDashboardStats(classId, true);   
+  
+  // Once fully loaded, change phase and animate exactly ONCE
+  phase = 'dashboard';
+  render(); 
+}
+
+async function fetchDashboardStats(classId, skipRender = false) {
+  try {
+    const snap = await db.collection('sessions').where('classId','==',classId).get();
+    totalDashSessions = snap.size;
+
+    if (totalDashSessions > 0 && STUDENTS.length > 0) {
+      let totalCheckins = 0;
+      snap.docs.forEach(doc => {
+        const att = doc.data().attendance || {};
+        totalCheckins += Object.keys(att).length; 
+      });
+      const totalPossible = totalDashSessions * STUDENTS.length;
+      avgDashRate = Math.round((totalCheckins / totalPossible) * 100);
+    }
+    if (!skipRender) render(); 
+  } catch(e) {
+    console.warn('[Firebase] fetch stats:', e.message);
+  }
+}
+
+/* ─── Bottom Navigation Function ─────────────────────────── */
+const NAV_PHASES = ['dashboard','history','report'];
+ 
+function navTo(dest){
+  if(dest==='history') { showHistory(); return; }
+  if(dest==='report')  { showReport();  return; }
+  if(dest==='dashboard' && activeClass) { openDashboard(activeClass.id); return; } 
+  phase=dest; render();
+}
+ 
+function bottomNav(){
+  if(!NAV_PHASES.includes(phase)) return '';
+  const tabs=[
+    {
+      id:'class', 
+      label:'Home', 
+      icon:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>'
+    },
+    {
+      id:'dashboard', 
+      label:'Attendance', 
+      icon:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'
+    },
+    {
+      id:'history', 
+      label:'History', 
+      icon:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg>', 
+      dot: historyData.length>0
+    },
+    {
+      id:'report', 
+      label:'Reports', 
+      icon:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>'
+    },
+  ];
+  return `<nav class="bottom-nav">
+    ${tabs.map(t=>`
+      <button class="nav-item${phase===t.id?' active':''}" onclick="${t.id==='class'?'phase=\'class\';render()':'navTo(\''+t.id+'\')'}">
+        <span class="nav-icon-wrap"><span class="nav-icon" style="display:flex; margin-bottom: 2px;">${t.icon}</span>${t.dot?'<span class="nav-dot"></span>':''}</span>
+        <span>${t.label}</span>
+      </button>`).join('')}
+  </nav>`;
+}
 /* ─── Add Class ──────────────────────────────────────────── */
-function toggleDay(day){
-  if(selectedDays.includes(day)) selectedDays=selectedDays.filter(d=>d!==day);
-  else selectedDays.push(day);
-  document.querySelectorAll('.day-btn').forEach(b=>b.classList.toggle('selected',selectedDays.includes(b.dataset.day)));
-}
-
+/* ─── Add Class ──────────────────────────────────────────── */
 async function saveNewClass(){
   const code    = document.getElementById('nc-code').value.trim();
   const section = document.getElementById('nc-section').value.trim();
   const name    = document.getElementById('nc-name').value.trim();
   const type    = document.getElementById('nc-type').value;
-  const time    = document.getElementById('nc-time').value.trim();
+  const sched   = document.getElementById('nc-schedule').value;
   const cap     = parseInt(document.getElementById('nc-cap').value)||30;
   const errEl   = document.getElementById('nc-err');
 
-  if(!code||!section||!name){errEl.textContent='Code, section, and name are required.';errEl.classList.add('show');return;}
+  if(!code||!section||!name||!sched){
+    errEl.textContent='Code, section, name, and schedule are required.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  // Split the dropdown value (e.g. "Mon,Wed,Fri|9:00 AM - 9:50 AM") into separate Day and Time variables
+  const parts = sched.split('|');
+  const classDays = parts[0] === 'Online' ? [] : parts[0].split(',');
+  const classTime = parts[1];
 
   errEl.classList.remove('show');
   const saveBtn = document.getElementById('nc-save');
@@ -378,19 +550,63 @@ async function saveNewClass(){
 
   try {
     const ref = await db.collection('classes').add({
-      code, section, name, type, days: selectedDays, meetingTime: time, capacity: cap,
+      code, section, name, type, days: classDays, meetingTime: classTime, capacity: cap,
       professor: currentUser.email, createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    CLASSES.push({id:ref.id,code,section,name,type,days:selectedDays,meetingTime:time,capacity:cap,professor:currentUser.email});
-    selectedDays=[]; phase='class'; render();
+    CLASSES.push({id:ref.id,code,section,name,type,days:classDays,meetingTime:classTime,capacity:cap,professor:currentUser.email});
+    phase='class'; render();
   } catch(e){
     errEl.textContent='Failed to save. Try again.'; errEl.classList.add('show');
     saveBtn.innerHTML='Save Class'; saveBtn.disabled=false;
   }
 }
+/* ─── Edit / Delete Class Logic ──────────────────────────── */
+function openClassEditSheet(event, classId, classCode) {
+  event.stopPropagation(); // Stop the card from opening the dashboard
+  
+  if (classCode.trim().toUpperCase().includes('IT 391')) {
+    alert("IT 391 is the required baseline class and cannot be edited or deleted.");
+    return;
+  }
+  
+  const old = document.getElementById('mark-sheet');
+  if(old) old.remove();
+  
+  const el = document.createElement('div');
+  el.id = 'mark-sheet'; el.className = 'sheet-overlay';
+  
+  // Reuse the sleek bottom-sheet from the manual attendance screen
+  el.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-name">${classCode}</div>
+      <div class="sheet-sub">Edit Class Options</div>
+      <div class="sheet-btns">
+        <button class="btn" style="border-color: var(--red); color: var(--red); background: var(--red-bg);" onclick="confirmDeleteClass('${classId}', '${classCode}')">
+          Delete Class
+        </button>
+      </div>
+      <button class="sheet-cancel" onclick="closeSheet()">Cancel</button>
+    </div>`;
+    
+  el.addEventListener('click', e => { if(e.target===el) closeSheet(); });
+  document.body.appendChild(el);
+}
 
+async function confirmDeleteClass(classId, classCode) {
+  closeSheet(); // Slide the menu down
+  if (confirm(`Are you sure you want to completely remove ${classCode}?\nThis will permanently delete it from your dashboard.`)) {
+    try {
+      await db.collection('classes').doc(classId).delete();
+      CLASSES = CLASSES.filter(c => c.id !== classId);
+      render(); // Refresh the home screen instantly
+    } catch(err) { 
+      console.error("Delete Error: ", err); 
+      alert("Failed to delete class."); 
+    }
+  }
+}
 /* ─── Session ────────────────────────────────────────────── */
-// RESET DEFAULTS WHEN CREATING A NEW SESSION
 function goToSessionStart(){ phase='session-start'; sessionSecs=360; tardyThresholdSecs=300; render(); }
 
 async function startSession(){
@@ -421,24 +637,20 @@ async function startSession(){
 async function recordScan(barcodeValue){
   const student=STUDENTS.find(s=>s.barcode.trim().toLowerCase()===barcodeValue.trim().toLowerCase());
 
-  // ERROR: Not on roster
   if(!student){
     playSound('error');
     showToast('Unknown ID: '+barcodeValue,'empty');
     return;
   }
 
-  // ERROR: Duplicate scan
   if(attendance[student.id]){
     playSound('error');
     showToast('Already scanned: '+student.name,'empty');
     return;
   }
 
-  // SUCCESS: Valid scan
   const scannedAt=new Date();
   
-  // TARDY PARAMETER MATH
   const elapsed = sessionSecs - remaining;
   const isLate = elapsed >= tardyThresholdSecs; 
   
@@ -501,7 +713,8 @@ async function endSession(){
 }
 
 function resetApp(){
-  phase='dashboard'; attendance={}; remaining=360; sessionDocID=null; overrideTarget=null; render();
+  attendance={}; remaining=360; sessionDocID=null; overrideTarget=null; 
+  if(activeClass) openDashboard(activeClass.id);
 }
 
 async function showHistory(){
@@ -717,7 +930,7 @@ function render(){
       <div class="isu-header" style="justify-content:center;">
         <div style="text-align:center;"><div class="isu-header-title">FlyBy</div><div class="isu-header-sub">Illinois State University</div></div>
       </div>
-      <div class="login-wrap">
+      <div class="login-wrap" style="flex:1;">
         <div class="login-logo">
           <canvas id="redbird" width="80" height="80" style="image-rendering:pixelated;width:80px;height:80px;"></canvas>
           <div class="typing-wrap"><div class="typing-line">FlyBy</div><div class="typing-sub">IT391 &middot; Professor sign-in</div></div>
@@ -741,32 +954,40 @@ function render(){
         <button class="isu-back-btn" onclick="logout()">Sign Out</button>
       </div>
       <div style="padding:0.75rem 0.85rem 0;font-size:11px;color:var(--text3);">${today}</div>
-      ${CLASSES.length===0?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>':CLASSES.map(cls=>`
-        <div class="class-card" onclick="activeClass=CLASSES.find(c=>c.id==='${cls.id}');fetchStudentsForClass('${cls.id}');phase='dashboard';render()">
-          <div class="class-card-header">
-            <div class="class-code">${cls.code}</div>
-            <div class="class-section-badge">Section ${cls.section}</div>
-          </div>
-          <div class="class-name">${cls.name}</div>
-          <div class="class-meta">${cls.type}${cls.days&&cls.days.length?' &middot; '+cls.days.join('/'):''}${cls.meetingTime?' &middot; '+cls.meetingTime:''}</div>
-          <div class="class-footer">
-            <div class="class-enrolled">${cls.capacity} students max</div>
-            <button class="class-view-btn">View &rsaquo;</button>
-          </div>
-        </div>`).join('')}
-      <button class="add-class-btn" onclick="selectedDays=[];phase='add-class';render()">+ Add New Class</button>`;
+      <div style="flex:1; overflow-y:auto;">
+        ${CLASSES.length===0?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>':CLASSES.map(cls=>`
+          <div class="class-card" onclick="openDashboard('${cls.id}')">
+            <div class="class-card-header">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div class="class-code">${cls.code}</div>
+                <div class="class-section-badge">Section ${cls.section}</div>
+              </div>
+              ${cls.code.includes('IT 391') ? '' : `
+                <button class="btn sm" style="background:transparent; border:none; padding:4px 8px; margin:-4px; color:var(--text3); font-size:10px; letter-spacing:0.05em; text-transform:uppercase;" onclick="openClassEditSheet(event, '${cls.id}', '${cls.code}')">
+                  Edit
+                </button>`}
+            </div>
+            <div class="class-name">${cls.name}</div>
+            <div class="class-meta">${cls.type}${cls.days&&cls.days.length?' &middot; '+cls.days.join('/'):''}${cls.meetingTime?' &middot; '+cls.meetingTime:''}</div>
+            <div class="class-footer">
+              <div class="class-enrolled">${cls.capacity} students max</div>
+              <button class="class-view-btn">View &rsaquo;</button>
+            </div>
+          </div>`).join('')}
+        <button class="add-class-btn" onclick="selectedDays=[];phase='add-class';render()">+ Add New Class</button>
+      </div>`;
     return;
   }
 
   /* ADD CLASS */
+  /* ADD CLASS */
   if(phase==='add-class'){
-    const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
     app.innerHTML=`
       <div class="isu-header">
         <div><div class="isu-header-title">Add New Class</div><div class="isu-header-sub">Enter class details</div></div>
         <button class="isu-back-btn" onclick="phase='class';render()">Cancel</button>
       </div>
-      <div style="padding:1rem;display:flex;flex-direction:column;gap:0.9rem;">
+      <div style="padding:1rem;display:flex;flex-direction:column;gap:0.9rem; flex:1; overflow-y:auto;">
         <div class="input-group">
           <div class="input-label">Course Code</div>
           <input id="nc-code" class="input-field" type="text" placeholder="e.g. IT 391">
@@ -782,20 +1003,43 @@ function render(){
         <div class="input-group">
           <div class="input-label">Format</div>
           <select id="nc-type" class="input-select">
-            <option value="Online">Online</option>
             <option value="In-Person">In-Person</option>
             <option value="Hybrid">Hybrid</option>
+            <option value="Online">Online</option>
           </select>
         </div>
         <div class="input-group">
-          <div class="input-label">Meeting Days</div>
-          <div class="days-grid">
-            ${DAYS.map(d=>`<button class="day-btn" data-day="${d}" onclick="toggleDay('${d}')">${d}</button>`).join('')}
-          </div>
-        </div>
-        <div class="input-group">
-          <div class="input-label">Meeting Time</div>
-          <input id="nc-time" class="input-field" type="text" placeholder="e.g. 2:00 PM – 3:15 PM">
+          <div class="input-label">Standard ISU Schedule</div>
+          <select id="nc-schedule" class="input-select">
+            <option value="" disabled selected>Select a time block</option>
+            <option value="Online|Asynchronous">Online / Asynchronous</option>
+            <optgroup label="M W F (50 min blocks)">
+              <option value="Mon,Wed,Fri|8:00 AM - 8:50 AM">M W F &bull; 8:00 AM - 8:50 AM</option>
+              <option value="Mon,Wed,Fri|9:00 AM - 9:50 AM">M W F &bull; 9:00 AM - 9:50 AM </option>
+              <option value="Mon,Wed,Fri|10:00 AM - 10:50 AM">M W F &bull; 10:00 AM - 10:50 AM </option>
+              <option value="Mon,Wed,Fri|11:00 AM - 11:50 AM">M W F &bull; 11:00 AM - 11:50 AM </option>
+              <option value="Mon,Wed,Fri|Noon - 12:50 PM">M W F &bull; Noon - 12:50 PM </option>
+              <option value="Mon,Wed,Fri|1:00 PM - 1:50 PM">M W F &bull; 1:00 PM - 1:50 PM </option>
+              <option value="Mon,Wed,Fri|2:00 PM - 2:50 PM">M W F &bull; 2:00 PM - 2:50 PM </option>
+              <option value="Mon,Wed,Fri|3:00 PM - 3:50 PM">M W F &bull; 3:00 PM - 3:50 PM</option>
+            </optgroup>
+            <optgroup label="T R (75 min blocks)">
+              <option value="Tue,Thu|8:00 AM - 9:15 AM">T R &bull; 8:00 AM - 9:15 AM</option>
+              <option value="Tue,Thu|9:35 AM - 10:50 AM">T R &bull; 9:35 AM - 10:50 AM </option>
+              <option value="Tue,Thu|11:00 AM - 12:15 PM">T R &bull; 11:00 AM - 12:15 PM </option>
+              <option value="Tue,Thu|12:35 PM - 1:50 PM">T R &bull; 12:35 PM - 1:50 PM </option>
+              <option value="Tue,Thu|2:00 PM - 3:15 PM">T R &bull; 2:00 PM - 3:15 PM </option>
+              <option value="Tue,Thu|3:35 PM - 4:50 PM">T R &bull; 3:35 PM - 4:50 PM</option>
+              <option value="Tue,Thu|5:00 PM - 6:15 PM">T R &bull; 5:00 PM - 6:15 PM</option>
+              <option value="Tue,Thu|6:30 PM - 7:45 PM">T R &bull; 6:30 PM - 7:45 PM</option>
+            </optgroup>
+            <optgroup label="M W (75 min blocks)">
+              <option value="Mon,Wed|2:00 PM - 3:15 PM">M W &bull; 2:00 PM - 3:15 PM </option>
+              <option value="Mon,Wed|3:35 PM - 4:50 PM">M W &bull; 3:35 PM - 4:50 PM</option>
+              <option value="Mon,Wed|5:00 PM - 6:15 PM">M W &bull; 5:00 PM - 6:15 PM</option>
+              <option value="Mon,Wed|6:30 PM - 7:45 PM">M W &bull; 6:30 PM - 7:45 PM</option>
+            </optgroup>
+          </select>
         </div>
         <div class="input-group">
           <div class="input-label">Max Students</div>
@@ -817,24 +1061,24 @@ function render(){
         <div><div class="isu-header-title">${cls.code||''} &middot; ${cls.section||''}</div><div class="isu-header-sub">${cls.name||''}</div></div>
         <button class="isu-back-btn" onclick="phase='class';render()">&#8592;</button>
       </div>
-      <div class="stat-row">
-        <div class="stat-card"><div class="stat-num green">${cls.capacity||STUDENTS.length}</div><div class="stat-lbl">Enrolled</div></div>
-        <div class="stat-card"><div class="stat-num gray">${historyData.length||0}</div><div class="stat-lbl">Sessions</div></div>
-        <div class="stat-card"><div class="stat-num amber">&#8212;</div><div class="stat-lbl">Avg Rate</div></div>
+      <div style="flex:1; overflow-y:auto;">
+        <div class="stat-row">
+          <div class="stat-card"><div class="stat-num green">${cls.capacity||STUDENTS.length}</div><div class="stat-lbl">Enrolled</div></div>
+          <div class="stat-card"><div class="stat-num gray">${totalDashSessions}</div><div class="stat-lbl">Sessions</div></div>
+          <div class="stat-card"><div class="stat-num amber">${totalDashSessions > 0 ? avgDashRate + '%' : '&#8212;'}</div><div class="stat-lbl">Avg Rate</div></div>
+        </div>
+        <div class="section-label"><span>Roster</span><span>${STUDENTS.length} students</span></div>
+        ${STUDENTS.length===0?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>':STUDENTS.map(s=>`
+          <div class="student-row">
+            <div class="avatar">${s.name.charAt(0)}</div>
+            <div class="student-info"><div class="student-name">${s.name}</div><div class="student-id">${s.barcode}</div></div>
+            <span class="status-pill absent">&#8212;</span>
+          </div>`).join('')}
       </div>
-      <div class="section-label"><span>Roster</span><span>${STUDENTS.length} students</span></div>
-      ${STUDENTS.length===0?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>':STUDENTS.map(s=>`
-        <div class="student-row">
-          <div class="avatar">${s.name.charAt(0)}</div>
-          <div class="student-info"><div class="student-name">${s.name}</div><div class="student-id">${s.barcode}</div></div>
-          <span class="status-pill absent">&#8212;</span>
-        </div>`).join('')}
-      <div class="footer-pad">
+      <div class="footer-pad" style="margin-bottom: 0;">
         <button class="btn primary" onclick="goToSessionStart()">+ Start New Session</button>
-        <button class="btn secondary" onclick="showHistory()">View History</button>
-        <button class="btn secondary" onclick="showReport()">Semester Report</button>
-        <button class="btn danger" onclick="logout()">Sign Out</button>
-      </div>`;
+      </div>
+      ${bottomNav()}`;
     return;
   }
 
@@ -844,10 +1088,9 @@ function render(){
     app.innerHTML=`
       <div class="isu-header">
         <div><div class="isu-header-title">New Session</div><div class="isu-header-sub">${cls.code||''} &middot; ${cls.section||''} &middot; ${today}</div></div>
-        <button class="isu-back-btn" onclick="phase='dashboard';render()">Cancel</button>
+        <button class="isu-back-btn" onclick="openDashboard('${cls.id}')">Cancel</button>
       </div>
       <div style="padding:1rem; flex: 1; overflow-y: auto;">
-        
         <div style="font-size:11px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin-bottom:.5rem;">Total Session Duration</div>
         <div class="duration-grid">
           <button class="dur-btn ${sessionSecs===300?'selected':''}" data-secs="300" onclick="setDuration(300)">5 min</button>
@@ -857,7 +1100,6 @@ function render(){
           <button class="dur-btn ${sessionSecs===1800?'selected':''}" data-secs="1800" onclick="setDuration(1800)">30 min</button>
           <button class="dur-btn ${sessionSecs===2700?'selected':''}" data-secs="2700" onclick="setDuration(2700)">45 min</button>
         </div>
-
         <div style="font-size:11px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin-top:1.5rem;margin-bottom:.5rem;">Mark Tardy After</div>
         <div class="duration-grid">
           <button class="dur-btn tardy-btn ${tardyThresholdSecs===60?'selected':''}" data-secs="60" onclick="setTardyThreshold(60)">1 min</button>
@@ -867,7 +1109,6 @@ function render(){
           <button class="dur-btn tardy-btn ${tardyThresholdSecs===900?'selected':''}" data-secs="900" onclick="setTardyThreshold(900)">15 min</button>
           <button class="dur-btn tardy-btn ${tardyThresholdSecs===99999?'selected':''}" data-secs="99999" onclick="setTardyThreshold(99999)">Never</button>
         </div>
-
         <div class="note-box" style="margin:1rem 0 0;" id="dur-note">
           Session open for <strong>${fmtMins(sessionSecs)}</strong>.<br>
           Students scanning after <strong>${tardyThresholdSecs === 99999 ? 'Never' : fmtMins(tardyThresholdSecs)}</strong> are marked tardy.
@@ -893,12 +1134,12 @@ function render(){
         <button class="tab-btn active" data-mode="camera" onclick="switchScanMode('camera')">Scan Barcode</button>
         <button class="tab-btn" data-mode="manual" onclick="switchScanMode('manual')">Mark Manually</button>
       </div>
-      <div id="camera-wrap">
+      <div id="camera-wrap" style="flex:1;">
         <div class="reticle"><div class="reticle-inner"></div><div class="scanline"></div></div>
         <div class="camera-hint">Hold student ID barcode steady in frame</div>
       </div>
       <div id="scan-toast" class="toast empty">Hold barcode in frame to scan</div>
-      <div id="manual-wrap" style="display:none;">
+      <div id="manual-wrap" style="display:none; flex:1; overflow-y:auto;">
         <div class="blind-bar">
           <div><div class="blind-count" id="blind-count">${totalIn()}</div><div class="blind-label">checked in</div></div>
           <span style="font-size:11px;color:var(--text3);">Tap a name to mark</span>
@@ -916,38 +1157,137 @@ function render(){
       <div class="isu-header">
         <div><div class="isu-header-title">Session Complete</div><div class="isu-header-sub">${cls.code||''} &middot; ${cls.section||''} &middot; ${today}</div></div>
       </div>
-      <div class="stat-row">
-        <div class="stat-card"><div class="stat-num green sum-num">${pc}</div><div class="stat-lbl">Present</div></div>
-        <div class="stat-card"><div class="stat-num amber sum-num">${lc}</div><div class="stat-lbl">Tardy</div></div>
-        <div class="stat-card"><div class="stat-num gray sum-num">${ac}</div><div class="stat-lbl">Absent</div></div>
+      <div style="flex:1; overflow-y:auto;">
+        <div class="stat-row">
+          <div class="stat-card"><div class="stat-num green sum-num">${pc}</div><div class="stat-lbl">Present</div></div>
+          <div class="stat-card"><div class="stat-num amber sum-num">${lc}</div><div class="stat-lbl">Tardy</div></div>
+          <div class="stat-card"><div class="stat-num gray sum-num">${ac}</div><div class="stat-lbl">Absent</div></div>
+        </div>
+        <div class="section-label"><span>Final Roster</span><span style="color:var(--blue);font-size:10px;">Tap to override</span></div>
+        <div id="summary-roster">${STUDENTS.map(s=>summaryRowHTML(s)).join('')}</div>
+        <div class="note-box">${sessionDocID?'Saved to Firebase &middot; Session auto-closes at midnight if not ended.':'Saved locally.'}</div>
       </div>
-      <div class="section-label"><span>Final Roster</span><span style="color:var(--blue);font-size:10px;">Tap to override</span></div>
-      <div id="summary-roster">${STUDENTS.map(s=>summaryRowHTML(s)).join('')}</div>
-      <div class="note-box">${sessionDocID?'Saved to Firebase &middot; Session auto-closes at midnight if not ended.':'Saved locally.'}</div>
       <div class="footer-pad">
         <button class="btn primary" onclick="resetApp()">New Session</button>
-        <button class="btn secondary" onclick="showHistory()">View History</button>
+        <button class="btn secondary" onclick="openDashboard('${cls.id}')">&#8592; Back to Dashboard</button>
       </div>`;
     return;
   }
 
-  /* HISTORY */
+ /* HISTORY */
   if(phase==='history'){
     const cls=activeClass||{};
+    
+    function fmtHistDate(dateStr){
+      if(!dateStr) return {full: 'Unknown date', dow: ''};
+      const d=new Date(dateStr+'T12:00:00');
+      return { full: d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),
+               dow:  d.toLocaleDateString('en-US',{weekday:'long'}) };
+    }
+ 
+    function histCardHTML(sess){
+      const att=sess.attendance||{};
+      const studs=STUDENTS.map(s=>{const r=att[s.id];return r?{...s,status:r.late?'late':'present',time:fmtTime(r.scannedAt),late:r.late}:{...s,status:'absent',time:null};});
+      const pc=studs.filter(s=>s.status==='present').length;
+      const lc=studs.filter(s=>s.status==='late').length;
+      const ac=studs.filter(s=>s.status==='absent').length;
+      const total=STUDENTS.length;
+      const ld=fmtHistDate(sess.date);
+      const isSelected=selectedSession&&selectedSession.id===sess.id;
+      return `
+        <div class="hist-card" onclick="selectedSession=${isSelected ? 'null' : `historyData.find(h=>h.id==='${sess.id}')`}; render()" style="cursor:pointer;">
+          <div class="hist-card-header">
+            <div>
+              <div class="hist-date">${sess.startedAt?fmtTime(sess.startedAt):'Unknown time'}</div>
+              <div class="hist-dow">${ld.dow}</div>
+            </div>
+            <div class="hist-present-badge">
+              <div class="hist-present-dot"></div>
+              ${pc+lc}/${total} Present
+            </div>
+          </div>
+          <div class="hist-stats">
+            <div class="hist-stat-box">
+              <div class="hist-stat-lbl">Absent</div>
+              <div class="hist-stat-num ${ac>0?'red':'muted'}">${ac}</div>
+            </div>
+            <div class="hist-stat-box">
+              <div class="hist-stat-lbl">Excused</div>
+              <div class="hist-stat-num muted">0</div>
+            </div>
+            <div class="hist-stat-box">
+              <div class="hist-stat-lbl">Late</div>
+              <div class="hist-stat-num ${lc>0?'amber':'muted'}">${lc}</div>
+            </div>
+          </div>
+        </div>
+        ${isSelected ? detailPanelHTML(sess, studs) : ''}`;
+    }
+ 
+    function detailPanelHTML(sess, studs){
+      const ld=fmtHistDate(sess.date);
+      const absentStuds=studs.filter(s=>s.status==='absent');
+      const lateStuds=studs.filter(s=>s.status==='late');
+      return `
+        <div class="detail-panel">
+          <div class="detail-panel-header">
+            <div class="detail-panel-label">Session Details</div>
+            <div class="detail-panel-date">${ld.full}</div>
+            <div class="detail-panel-sub">${cls.code||''} ${cls.section||''}</div>
+          </div>
+          ${absentStuds.length>0?`
+            <div class="detail-group-label">&#128683; Absent (${absentStuds.length})</div>
+            ${absentStuds.map(s=>`
+              <div class="detail-student-row">
+                <div class="detail-avatar">${s.name.slice(0,2).toUpperCase()}</div>
+                <div>
+                  <div class="detail-student-name">${s.name}</div>
+                  <div class="detail-student-id">ID: ${s.barcode}</div>
+                </div>
+                <button class="detail-mail-btn" title="Email student">&#9993;</button>
+              </div>`).join('')}`:''}
+          ${lateStuds.length>0?`
+            <div class="detail-group-label">&#128336; Late (${lateStuds.length})</div>
+            ${lateStuds.map(s=>`
+              <div class="detail-student-row">
+                <div class="detail-avatar" style="background:var(--amber-bg);color:var(--amber);">${s.name.slice(0,2).toUpperCase()}</div>
+                <div>
+                  <div class="detail-student-name">${s.name}</div>
+                  <div class="detail-student-id">ID: ${s.barcode}${s.time?' &bull; Arrived '+s.time:''}</div>
+                </div>
+              </div>`).join('')}`:''}
+        </div>
+        <button class="detail-edit-btn" onclick="attendance=Object.fromEntries(Object.entries(historyData.find(h=>h.id==='${sess.id}')?.attendance||{}).map(([k,v])=>[k,{...v,scannedAt:v.scannedAt?.toDate?v.scannedAt.toDate():new Date(v.scannedAt)}]));sessionDocID='${sess.id}';phase='summary';render()">
+          Edit Attendance Record
+        </button>`;
+    }
+ 
+    let historyListHTML = '';
+    if(historyData.length === 0) {
+      historyListHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Loading...</div>';
+    } else {
+      let lastDate = null;
+      historyData.forEach(sess => {
+        const ld = fmtHistDate(sess.date);
+        if (ld.full !== lastDate) {
+          historyListHTML += `<div style="font-family:'Fira Code',monospace;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin:1.5rem 1rem 0.75rem;">${ld.full}</div>`;
+          lastDate = ld.full;
+        }
+        historyListHTML += histCardHTML(sess);
+      });
+    }
+
     app.innerHTML=`
       <div class="isu-header">
         <div><div class="isu-header-title">Session History</div><div class="isu-header-sub">${cls.code||''} &middot; ${cls.section||''}</div></div>
-        <button class="isu-back-btn" onclick="phase='dashboard';render()">&#8592;</button>
       </div>
-      ${historyData.length===0?'<div class="empty-state">No sessions recorded yet for this class.</div>':historyData.map(sess=>{
-        const att=sess.attendance||{};
-        const studs=STUDENTS.map(s=>{const r=att[s.id];return r?{name:s.name,status:r.late?'late':'present',time:fmtTime(r.scannedAt)}:{name:s.name,status:'absent',time:null};});
-        const pc2=studs.filter(s=>s.status==='present').length,lc2=studs.filter(s=>s.status==='late').length;
-        return `<div class="history-session"><div class="history-date">${sess.date||'Unknown date'}</div><div class="history-meta">${sess.startedAt?'Started '+fmtTime(sess.startedAt)+' &middot; ':''}${pc2} present &middot; ${lc2} tardy &middot; ${STUDENTS.length-pc2-lc2} absent</div><div class="history-pills">${studs.map(s=>`<span class="history-pill ${s.status}">${s.name}${s.time?' '+s.time:''}${s.status==='late'?' &#9203;':''}</span>`).join('')}</div></div>`;
-      }).join('')}`;
+      <div style="flex:1;overflow-y:auto;padding-top:0;padding-bottom:0.5rem;background:var(--bg3);">
+        ${historyListHTML}
+      </div>
+      ${bottomNav()}`;
     return;
   }
-
+ 
   /* SEMESTER REPORT */
   if(phase==='report'){
     const total=reportData[0]?reportData[0].total:0;
@@ -955,14 +1295,32 @@ function render(){
     app.innerHTML=`
       <div class="isu-header">
         <div><div class="isu-header-title">Semester Report</div><div class="isu-header-sub">${total} session${total!==1?'s':''} recorded</div></div>
-        <button class="isu-back-btn" onclick="phase='dashboard';render()">&#8592;</button>
       </div>
-      ${reportLoading?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Calculating on server...</div>':
-        reportData.length===0?'<div class="empty-state">No sessions recorded yet.</div>':`
-        <div class="backend-banner">&#9729; Calculated by Cloud Function &middot; Processed on Google servers</div>
-        <div class="section-label"><span>Per-student totals</span><span>P &middot; T &middot; A</span></div>
-        ${reportData.sort((a,b)=>b.rate-a.rate).map(s=>`<div class="report-row"><div><div class="report-name">${s.name}</div><div class="report-pct">${s.rate}% attendance rate</div></div><div class="report-stats"><span class="rp">${s.present}P</span><span class="rl">${s.late}T</span><span class="ra">${s.absent}A</span></div></div>`).join('')}
-        <div class="note-box">Sorted by rate &middot; P=Present &middot; T=Tardy &middot; A=Absent</div>`}`;
+      <div style="flex:1;overflow-y:auto;background:var(--bg3);padding:0.5rem 0;">
+        ${reportLoading?'<div class="empty-state"><div class="spinner" style="margin:0 auto 8px"></div>Calculating on server...</div>':
+          reportData.length===0?'<div class="empty-state">No sessions recorded yet.</div>':`
+          <div class="backend-banner" style="margin:0 0.85rem 0.85rem;">&#9729; Cloud Function &middot; Processed on Google servers</div>
+          ${reportData.sort((a,b)=>b.rate-a.rate).map(s=>{
+            const barW=Math.round(s.rate);
+            return `<div class="hist-card" style="margin-bottom:0.75rem;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="font-size:14px;font-weight:600;color:var(--text);">${s.name}</div>
+                <div class="hist-present-badge">${s.rate}%</div>
+              </div>
+              <div style="background:var(--bg2);border-radius:6px;height:6px;overflow:hidden;margin-bottom:10px;">
+                <div style="width:${barW}%;height:100%;background:${s.rate>=80?'var(--green)':s.rate>=60?'var(--amber)':'var(--red)'};border-radius:6px;"></div>
+              </div>
+              <div class="hist-stats">
+                <div class="hist-stat-box"><div class="hist-stat-lbl">Present</div><div class="hist-stat-num" style="color:var(--green);">${s.present}</div></div>
+                <div class="hist-stat-box"><div class="hist-stat-lbl">Tardy</div><div class="hist-stat-num amber">${s.late}</div></div>
+                <div class="hist-stat-box"><div class="hist-stat-lbl">Absent</div><div class="hist-stat-num ${s.absent>0?'red':'muted'}">${s.absent}</div></div>
+              </div>
+            </div>`;
+          }).join('')}
+          <div class="note-box" style="margin:0 0.85rem 1rem;">P=Present &middot; T=Tardy &middot; A=Absent &middot; sorted by rate</div>`}
+      </div>
+      ${bottomNav()}`;
+ 
     return;
   }
 }
