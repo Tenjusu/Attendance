@@ -131,7 +131,13 @@ body {
 .status-pill.late{background:var(--amber-bg);color:var(--amber);border:0.5px solid var(--amber-br);}
 .status-pill.absent{background:var(--bg2);color:var(--text3);border:0.5px solid var(--border);}
 .status-pill.override{background:var(--blue-bg);color:var(--blue);border:0.5px solid rgba(21,101,192,0.2);}
-#camera-wrap{position:relative;height:var(--scan-h);background:#0a0a0a;overflow:hidden;}
+#camera-wrap {
+  position: relative;
+  height: var(--scan-h);
+  background: #0a0a0a;
+  overflow: hidden;
+  flex-shrink: 0; 
+}
 #camera-wrap video,#camera-wrap canvas{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;}
 #camera-wrap canvas{display:none;}
 .reticle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:240px;height:68px;pointer-events:none;}
@@ -742,25 +748,37 @@ function startCamera(){
   if(cameraRunning) return;
   const wrap=document.getElementById('camera-wrap');
   if(!wrap) return;
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    wrap.innerHTML='<div class="cam-error"><p>Camera blocked by browser.</p><p>Use HTTPS or localhost.</p></div>';
-    return;
-  }
+
   Quagga.init({
-    inputStream: { type: 'LiveStream', target: wrap, constraints: { facingMode: 'environment' } },
-    decoder: { readers: ['code_128_reader', 'code_39_reader', 'code_93_reader', 'ean_reader', 'upc_reader'] }
+    inputStream: { 
+      type: 'LiveStream', 
+      target: wrap, 
+      constraints: { 
+        facingMode: 'environment',
+        width: { ideal: 640 },
+        height: { ideal: 480 } 
+      } 
+    },
+    decoder: { 
+      // Restored full reader list to ensure it catches all ID types
+      readers: ['code_128_reader', 'code_39_reader', 'code_93_reader', 'ean_reader', 'upc_reader', 'i2of5_reader', 'codabar_reader'] 
+    },
+    locate: true
   }, err => {
     if(err){
       wrap.innerHTML='<div class="cam-error"><p>Camera access denied.</p></div>';
       return;
     }
-    Quagga.start(); cameraRunning=true;
+    Quagga.start(); 
+    cameraRunning=true;
   });
+
   let lastVal=null, lastTime=0;
   Quagga.onDetected(result=>{
     const val=result.codeResult.code, now=Date.now();
     if(val===lastVal && now-lastTime<1500) return;
-    lastVal=val; lastTime=now; recordScan(val);
+    lastVal=val; lastTime=now; 
+    recordScan(val);
   });
 }
 
@@ -1091,7 +1109,7 @@ function render(){
         <button class="tab-btn active" data-mode="camera" onclick="switchScanMode('camera')">Scan</button>
         <button class="tab-btn" data-mode="manual" onclick="switchScanMode('manual')">Manual</button>
       </div>
-      <div id="camera-wrap" style="flex:1;">
+      <div id="camera-wrap" >
         <div class="reticle"><div class="reticle-inner"></div><div class="scanline"></div></div>
       </div>
       <div id="scan-toast" class="toast empty">Hold barcode steady</div>
