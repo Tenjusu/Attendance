@@ -1213,7 +1213,7 @@ function render(){
                   <div class="detail-student-name">${s.name}</div>
                   <div class="detail-student-id">ID: ${s.barcode}</div>
                 </div>
-                <button class="detail-mail-btn" title="Email student">&#9993;</button>
+        
               </div>`).join('')}`:''}
         </div>
         <button class="detail-edit-btn" onclick="attendance=Object.fromEntries(Object.entries(historyData.find(h=>h.id==='${sess.id}')?.attendance||{}).map(([k,v])=>[k,{...v,scannedAt:v.scannedAt?.toDate?v.scannedAt.toDate():new Date(v.scannedAt)}]));sessionDocID='${sess.id}';phase='summary';render()">
